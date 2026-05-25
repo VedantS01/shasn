@@ -5,6 +5,7 @@ import { VOTER_MARKET } from "../src/data/voters.js";
 import { RESOURCES, IDEOLOGIES, RESOURCE_OF } from "../src/engine/constants.js";
 import { DILEMMAS } from "../src/data/dilemmas.js";
 import { CONSPIRACIES, CONSPIRACY_EFFECT_TYPES } from "../src/data/conspiracies.js";
+import { HEADLINES, HEADLINE_EFFECT_TYPES } from "../src/data/headlines.js";
 
 test("there are exactly 9 zones with unique ids", () => {
   assert.equal(ZONES.length, 9);
@@ -73,5 +74,18 @@ test("conspiracies: unique ids and known effect types", () => {
     assert.equal(typeof c.canInterrupt, "boolean", `${c.id} canInterrupt`);
     assert.ok(CONSPIRACY_EFFECT_TYPES.includes(c.effect.type), `${c.id} effect ${c.effect.type}`);
     assert.ok(c.effect.params && typeof c.effect.params === "object", `${c.id} params`);
+  }
+});
+
+test("headlines: unique ids, known effect types, valid grant/lose params", () => {
+  assert.ok(HEADLINES.length >= 10);
+  assert.equal(new Set(HEADLINES.map((h) => h.id)).size, HEADLINES.length);
+  for (const hl of HEADLINES) {
+    assert.ok(hl.name && hl.text, `${hl.id} name/text`);
+    assert.ok(HEADLINE_EFFECT_TYPES.includes(hl.effect.type), `${hl.id} effect ${hl.effect.type}`);
+    if (hl.effect.type === "grant" || hl.effect.type === "lose") {
+      assert.ok(RESOURCES.includes(hl.effect.params.resource), `${hl.id} resource`);
+      assert.ok(hl.effect.params.amount > 0, `${hl.id} amount`);
+    }
   }
 });

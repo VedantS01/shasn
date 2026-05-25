@@ -4,7 +4,8 @@ export const RESOURCES = ["funds", "clout", "media", "trust"];
 export const RESOURCE_OF = { capitalist: "funds", supremo: "clout", showstopper: "media", idealist: "trust" };
 export const IDEOLOGY_OF = { funds: "capitalist", clout: "supremo", media: "showstopper", trust: "idealist" };
 
-export const ACCENT = { capitalist: "#caa12f", supremo: "#b3472f", showstopper: "#a8327d", idealist: "#2f6aa8" };
+// Canonical SHASN ideology colors: Capitalist=green, Supremo=red, Showstopper=blue, Idealist=yellow.
+export const ACCENT = { capitalist: "#2f9e57", supremo: "#c0392b", showstopper: "#2f6fb0", idealist: "#d6a90a" };
 
 // pile count -> unlocked tier (0..3)
 export function tierOf(pileCount) {

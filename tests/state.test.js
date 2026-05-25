@@ -28,8 +28,13 @@ test("decks are shuffled deterministically by seed and contain all ids", () => {
   assert.notDeepEqual(a.decks.dilemmaDraw, c.decks.dilemmaDraw); // overwhelmingly likely
 });
 
-test("turn starts at player 0, dilemma phase, no winner", () => {
+test("game opens in the starting-resource draft (player 0 drafts 1)", () => {
   const g = createGame({ players: PLAYERS, seed: 1 });
-  assert.deepEqual(g.turn, { current: 0, phase: "dilemma", pendingDilemma: null, gerrymanders: 0 });
+  assert.deepEqual(g.turn, { current: 0, phase: "draft", pendingDilemma: null, gerrymanders: 0, draftRemaining: 1 });
   assert.equal(g.winner, null);
+});
+
+test("zones start with no volatile owner", () => {
+  const g = createGame({ players: PLAYERS, seed: 1 });
+  for (const z of g.zones) assert.equal(z.volatileOwner, null);
 });

@@ -1,13 +1,15 @@
 import { clone } from "./state.js";
 import { shuffle, makeRng } from "./rng.js";
-import { tierOf } from "./constants.js";
+import { tierOf, RESOURCES } from "./constants.js";
 import { DILEMMA_BY_ID } from "../data/dilemmas.js";
-import { VOTER_BY_ID } from "../data/voters.js";
+import { VOTER_BY_ID, VOLATILE_COST } from "../data/voters.js";
 import { CONSPIRACY_BY_ID } from "../data/conspiracies.js";
+import { HEADLINE_BY_ID } from "../data/headlines.js";
 import { resolveEffect } from "./conspiracies.js";
+import { resolveHeadline } from "./headlines.js";
 import {
-  isGameOver, canPlaceInZone, majorityHolder, majorityThreshold,
-  neighborsOf, isZoneFull, totalPegs, zoneCapacity
+  isGameOver, canPlaceInZone, canReachZone, majorityHolder, majorityThreshold,
+  neighborsOf, isZoneFull, totalPegs, zoneCapacity, effectivePegs
 } from "./rules.js";
 
 // --- deck helpers -----------------------------------------------------------
@@ -29,11 +31,43 @@ function drawConspiracy(state) {
   return state.decks.conspiracyDraw.shift();
 }
 
+function drawHeadline(state) {
+  if (state.decks.headlineDraw.length === 0) {
+    const rng = makeRng(state.seed + state.log.length + 13);
+    state.decks.headlineDraw = shuffle(state.decks.headlineDiscard, rng);
+    state.decks.headlineDiscard = [];
+  }
+  return state.decks.headlineDraw.shift();
+}
+
+// --- starting resource draft ------------------------------------------------
+// Player i (0-indexed) drafts i+1 resources of their choice, in player order.
+export function draftResource(state, { resource }) {
+  if (state.turn.phase !== "draft") throw new Error("not in draft phase");
+  if (!RESOURCES.includes(resource)) throw new Error("invalid resource");
+  let s = clone(state);
+  const p = s.players[s.turn.current];
+  p.resources[resource] += 1;
+  s.turn.draftRemaining -= 1;
+  s.log.push(`${p.name} drafted 1 ${resource}`);
+  if (s.turn.draftRemaining <= 0) {
+    if (s.turn.current < s.players.length - 1) {
+      s.turn.current += 1;
+      s.turn.draftRemaining = s.turn.current + 1;
+    } else {
+      s.turn.current = 0;
+      s = beginTurn(s); // draft complete -> first player's turn begins
+    }
+  }
+  return s;
+}
+
 // --- turn lifecycle ---------------------------------------------------------
 export function beginTurn(state) {
   const s = clone(state);
   const p = s.players[s.turn.current];
   p.usedThisTurn = {};
+  s.lastHeadline = null;
   if (tierOf(p.piles.idealist) >= 1) { p.resources.trust += 1; }
   s.turn.pendingDilemma = drawDilemma(s);
   s.turn.phase = "dilemma";
@@ -70,7 +104,7 @@ export function finishGame(state) {
   const ranked = [...s.players].map((p) => ({
     id: p.id,
     zones: s.zones.filter((z) => z.lockedBy === p.id).length,
-    pegs: s.zones.reduce((t, z) => t + (z.pegs[p.id] || 0), 0)
+    pegs: s.zones.reduce((t, z) => t + effectivePegs(z, p.id), 0)
   })).sort((a, b) => b.zones - a.zones || b.pegs - a.pegs);
   s.winner = ranked[0].id;
   s.turn.phase = "gameover";
@@ -172,6 +206,41 @@ export function gerrymander(state, { fromZone, toZone, pegOwner }) {
   s.turn.gerrymanders -= 1;
   s.log.push(`gerrymander: moved a ${s.players[pegOwner].name} peg ${fromZone}→${toZone}`);
   relockZones(s);
+  return s;
+}
+
+// Seize a zone's single volatile seat: a non-gerrymanderable token that triggers
+// a Headline event immediately on the placer.
+export function occupyVolatile(state, { zoneId }) {
+  if (state.turn.phase !== "actions") throw new Error("act only in actions phase");
+  const s = clone(state);
+  const p = s.players[s.turn.current];
+  const zone = s.zones.find((z) => z.id === zoneId);
+  if (!zone) throw new Error("no such zone");
+  if (zone.volatileOwner !== null) throw new Error("volatile seat already taken");
+  if (!canReachZone(s, p.id, zoneId)) throw new Error("cannot reach that zone");
+  if (!canAfford(p, VOLATILE_COST)) throw new Error("cannot afford the volatile seat");
+
+  for (const [r, n] of Object.entries(VOLATILE_COST)) p.resources[r] -= n;
+  zone.volatileOwner = p.id;
+  s.log.push(`${p.name} seized the volatile seat in ${zoneId}`);
+
+  const hid = drawHeadline(s);
+  if (hid) {
+    const headline = HEADLINE_BY_ID[hid];
+    resolveHeadline(s, headline, p.id);
+    s.decks.headlineDiscard.push(hid);
+    s.lastHeadline = { id: hid, name: headline.name, text: headline.text, player: p.id };
+    s.log.push(`Headline: ${headline.name}`);
+  }
+
+  if (zone.lockedBy === null && majorityHolder(zone) === p.id) {
+    zone.lockedBy = p.id;
+    let grants = 1;
+    if (tierOf(p.piles.supremo) >= 1) grants += 1;
+    s.turn.gerrymanders += grants;
+    s.log.push(`${p.name} locked ${zoneId}`);
+  }
   return s;
 }
 

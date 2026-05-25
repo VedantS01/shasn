@@ -6,3 +6,8 @@ export const VOTER_MARKET = [
 ];
 
 export const VOTER_BY_ID = Object.fromEntries(VOTER_MARKET.map((v) => [v.id, v]));
+
+// Cost to seize a zone's single volatile seat (a contested, non-gerrymanderable
+// spot that triggers a Headline). One token is placed there.
+export const VOLATILE_COST = { clout: 1, media: 1 };
+
