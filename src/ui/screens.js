@@ -337,7 +337,8 @@ function dilemmaModal(ctx, me) {
     h("span", { class: "label" }, `${me.name} — a dilemma`),
     h("h3", {}, card.question));
   const mkAnswer = (idx) => {
-    const btn = h("button", { class: `answer ans-${card.answers[idx].ideology}` }, card.answers[idx].label);
+    // Neutral styling — the ideology/payout must stay hidden until the player commits.
+    const btn = h("button", { class: "answer" }, card.answers[idx].label);
     btn.addEventListener("click", () => animateAnswer(ctx, cardEl, card.answers[idx], idx));
     return btn;
   };

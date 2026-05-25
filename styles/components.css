@@ -93,10 +93,6 @@
 .dilemma-card.accent-showstopper { background: var(--media); color: #fff; }
 .dilemma-card.accent-idealist { background: var(--trust); color: #1a1714; }
 .dilemma-card.answered .label, .dilemma-card.answered h3 { color: inherit; }
-.answer.ans-capitalist:hover { background: var(--funds); color: #fff; border-color: var(--funds); }
-.answer.ans-supremo:hover { background: var(--clout); color: #fff; border-color: var(--clout); }
-.answer.ans-showstopper:hover { background: var(--media); color: #fff; border-color: var(--media); }
-.answer.ans-idealist:hover { background: var(--trust); color: #1a1714; border-color: var(--trust); }
 .token-burst { display: flex; gap: 10px; justify-content: center; margin-top: 18px;
   transition: transform .8s cubic-bezier(.4,-0.3,.3,1), opacity .8s ease; }
 .token-burst.fly { transform: translate(38%, -280px) scale(.55); opacity: 0; }
