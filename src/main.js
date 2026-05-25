@@ -13,6 +13,7 @@ function setUi(patch) { ui = { ...ui, ...patch }; paint(); }
 const REDUCERS = {
   answerDilemma: A.answerDilemma,
   buyVoter: A.buyVoter,
+  occupyVolatile: A.occupyVolatile,
   buyConspiracy: A.buyConspiracy,
   playConspiracy: A.playConspiracy,
   usePower: A.usePower,
@@ -23,9 +24,19 @@ const REDUCERS = {
 function dispatch(action, payload = {}) {
   try {
     if (action === "newGame") {
-      state = A.beginTurn(createGame({ players: payload.players, seed: Date.now() >>> 0 }));
+      // game opens in the starting-resource draft (phase "draft")
+      state = createGame({ players: payload.players, seed: Date.now() >>> 0 });
       ui = { mode: "play", placing: null, error: null };
       save(state); paint(); return;
+    }
+    if (action === "draftResource") {
+      state = A.draftResource(state, payload);
+      save(state);
+      // when the last pick completes, the engine begins player 0's turn -> hand off
+      ui = state.turn.phase === "dilemma"
+        ? { mode: "handoff", placing: null, error: null }
+        : { ...ui, placing: null, error: null };
+      paint(); return;
     }
     if (action === "clearSave") {
       clearSave(); state = null; ui = { mode: "setup", placing: null, error: null }; paint(); return;

@@ -28,11 +28,12 @@ test("neighbor graph is symmetric and references real zones", () => {
   }
 });
 
-test("every zone has a name and svgPath", () => {
+test("every zone has a name and ring position", () => {
   for (const z of ZONES) {
     assert.ok(z.name && typeof z.name === "string");
-    assert.ok(z.svgPath && z.svgPath.startsWith("M"));
+    assert.ok(z.ring === "center" || typeof z.ring === "number", `${z.id} ring`);
   }
+  assert.equal(ZONES.filter((z) => z.ring === "center").length, 1, "exactly one center zone");
 });
 
 test("voter offers have positive value and valid resource costs", () => {
