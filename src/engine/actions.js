@@ -3,6 +3,8 @@ import { shuffle, makeRng } from "./rng.js";
 import { tierOf } from "./constants.js";
 import { DILEMMA_BY_ID } from "../data/dilemmas.js";
 import { VOTER_BY_ID } from "../data/voters.js";
+import { CONSPIRACY_BY_ID } from "../data/conspiracies.js";
+import { resolveEffect } from "./conspiracies.js";
 import {
   isGameOver, canPlaceInZone, majorityHolder, majorityThreshold,
   neighborsOf, isZoneFull, totalPegs, zoneCapacity
@@ -16,6 +18,15 @@ function drawDilemma(state) {
     state.decks.dilemmaDiscard = [];
   }
   return state.decks.dilemmaDraw.shift();
+}
+
+function drawConspiracy(state) {
+  if (state.decks.conspiracyDraw.length === 0) {
+    const rng = makeRng(state.seed + state.log.length + 7);
+    state.decks.conspiracyDraw = shuffle(state.decks.conspiracyDiscard, rng);
+    state.decks.conspiracyDiscard = [];
+  }
+  return state.decks.conspiracyDraw.shift();
 }
 
 // --- turn lifecycle ---------------------------------------------------------
@@ -134,5 +145,37 @@ export function gerrymander(state, { fromZone, toZone, pegOwner }) {
   s.turn.gerrymanders -= 1;
   s.log.push(`gerrymander: moved a ${s.players[pegOwner].name} peg ${fromZone}→${toZone}`);
   relockZones(s);
+  return s;
+}
+
+// --- conspiracies -----------------------------------------------------------
+export function buyConspiracy(state, { spend }) {
+  if (state.turn.phase !== "actions") throw new Error("buy only in actions phase");
+  const s = clone(state);
+  const p = s.players[s.turn.current];
+  const total = Object.values(spend).reduce((a, b) => a + b, 0);
+  const min = tierOf(p.piles.showstopper) >= 2 ? 3 : 4;   // Showstopper T2
+  if (total < min || total > 5) throw new Error(`spend must total ${min}-5`);
+  for (const [r, n] of Object.entries(spend)) {
+    if (p.resources[r] < n) throw new Error("cannot afford spend");
+  }
+  for (const [r, n] of Object.entries(spend)) p.resources[r] -= n;
+  const card = drawConspiracy(s);
+  if (card) p.hand.push(card);
+  s.log.push(`${p.name} bought a conspiracy`);
+  return s;
+}
+
+export function playConspiracy(state, { cardId, target, actorId }) {
+  const s = clone(state);
+  const actor = actorId ?? s.turn.current;
+  const p = s.players[actor];
+  const idx = p.hand.indexOf(cardId);
+  if (idx === -1) throw new Error("card not in hand");
+  const card = CONSPIRACY_BY_ID[cardId];
+  resolveEffect(s, card.effect, { actorId: actor, target: target || {} });
+  p.hand.splice(idx, 1);
+  s.decks.conspiracyDiscard.push(cardId);
+  s.log.push(`${p.name} played ${card.name}`);
   return s;
 }
