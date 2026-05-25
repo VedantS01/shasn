@@ -78,6 +78,15 @@ export function finishGame(state) {
   return s;
 }
 
+// Draw one extra dilemma mid-turn (e.g. from the "Breaking News" conspiracy)
+// WITHOUT re-running start-of-turn effects. Returns to the dilemma phase.
+export function drawExtraDilemma(state) {
+  const s = clone(state);
+  s.turn.pendingDilemma = drawDilemma(s);
+  s.turn.phase = "dilemma";
+  return s;
+}
+
 // --- voters, placement, gerrymander ----------------------------------------
 function canAfford(player, cost) {
   return Object.entries(cost).every(([r, n]) => player.resources[r] >= n);

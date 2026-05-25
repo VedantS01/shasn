@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createGame } from "../src/engine/state.js";
-import { beginTurn, answerDilemma, endTurn, buyVoter, gerrymander } from "../src/engine/actions.js";
+import { beginTurn, answerDilemma, endTurn, buyVoter, gerrymander, drawExtraDilemma } from "../src/engine/actions.js";
 import { DILEMMA_BY_ID } from "../src/data/dilemmas.js";
 
 const P = [{ name: "A", color: "#1" }, { name: "B", color: "#2" }];
@@ -58,6 +58,17 @@ test("usedThisTurn resets at the start of a turn", () => {
   g = answerDilemma(g, { answerIndex: 0 });
   g = endTurn(g);                            // -> player 0 again, beginTurn ran
   assert.deepEqual(g.players[0].usedThisTurn, {});
+});
+
+test("drawExtraDilemma returns to dilemma phase without re-applying start-of-turn bonus", () => {
+  let g = beginTurn(createGame({ players: P, seed: 1 }));
+  g.players[0].piles.idealist = 2;           // tier 1 (start-of-turn +1 trust)
+  g = answerDilemma(g, { answerIndex: 0 });
+  const trustBefore = g.players[0].resources.trust;
+  g = drawExtraDilemma(g);
+  assert.equal(g.turn.phase, "dilemma");
+  assert.ok(g.turn.pendingDilemma);
+  assert.equal(g.players[0].resources.trust, trustBefore); // no extra trust applied
 });
 
 // --- voters / placement / gerrymander --------------------------------------
