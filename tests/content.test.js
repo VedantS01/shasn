@@ -47,7 +47,7 @@ test("voter offers have positive value and valid resource costs", () => {
 });
 
 test("dilemmas: unique ids, two answers, valid ideology + dominant payout", () => {
-  assert.ok(DILEMMAS.length >= 8);
+  assert.ok(DILEMMAS.length >= 60);
   assert.equal(new Set(DILEMMAS.map((d) => d.id)).size, DILEMMAS.length);
   for (const d of DILEMMAS) {
     assert.ok(d.question && d.question.length > 0, `${d.id} question`);
@@ -66,7 +66,7 @@ test("dilemmas: unique ids, two answers, valid ideology + dominant payout", () =
 });
 
 test("conspiracies: unique ids and known effect types", () => {
-  assert.ok(CONSPIRACIES.length >= 6);
+  assert.ok(CONSPIRACIES.length >= 20);
   assert.equal(new Set(CONSPIRACIES.map((c) => c.id)).size, CONSPIRACIES.length);
   for (const c of CONSPIRACIES) {
     assert.ok(c.name && c.text, `${c.id} name/text`);
