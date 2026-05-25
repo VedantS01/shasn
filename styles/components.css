@@ -15,14 +15,24 @@
 @media (max-width: 860px) { .turn-grid { grid-template-columns: 1fr; } }
 
 /* SVG map */
-.map { width: 100%; height: auto; background: var(--paper-2); border: 2px solid var(--ink); display: block; }
-.zone-shape { fill: var(--paper); stroke: var(--ink); stroke-width: 2; }
+.map { width: 100%; height: auto; background:
+  radial-gradient(circle at 50% 48%, #fbf6ea 0%, #efe7d6 70%, #e7dcc4 100%);
+  border: 2px solid var(--ink); border-radius: 4px; display: block; }
+.coast { fill: #dde9e0; stroke: #b9cbbd; stroke-width: 2; stroke-dasharray: 3 5; }
+.zone-shape { fill: var(--paper); stroke: var(--ink); stroke-width: 2.5; transition: fill .18s ease; }
 .zone-shape.locked { fill: var(--paper-2); }
 .zone-shape.selectable { cursor: pointer; }
-.zone-shape.selectable:hover { fill: #fff7e6; }
-.zone-name { font: 600 13px var(--sans); fill: var(--ink); pointer-events: none; }
-.zone-sub { font: 500 11px var(--sans); fill: var(--muted); pointer-events: none; }
-.peg { stroke: var(--ink); stroke-width: 1; }
+.zone-shape.selectable:hover { fill: #fff3d6; }
+.zone-name { font: 800 14px var(--serif); fill: var(--ink); pointer-events: none; }
+.zone-sub { font: 600 11px var(--sans); fill: var(--muted); pointer-events: none; }
+.seat { fill: #fffdf8; stroke: var(--ink); stroke-width: 1.5; opacity: .8; }
+.seat.filled { opacity: 1; stroke-width: 1.5; }
+.vol-seat { fill: #fff; stroke: #7a1f17; stroke-width: 2.5; stroke-dasharray: 3 2; }
+.vol-seat.filled { stroke: var(--ink); stroke-dasharray: none; }
+.vol-seat.selectable { cursor: pointer; }
+.vol-seat.selectable:hover { fill: #ffe9b8; }
+.vol-mark { font: 700 12px var(--sans); fill: #7a1f17; pointer-events: none; }
+.vol-seat.filled + .vol-mark, .vol-seat.filled ~ .vol-mark { fill: #fff; }
 
 /* Cards (dilemma, conspiracy) */
 .card { border: 2px solid var(--ink); background: var(--paper); padding: 16px; border-radius: 2px; }
@@ -60,6 +70,40 @@
 
 /* Setup */
 .setup-player { display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: center; margin-top: 8px; }
+
+/* Draft */
+.draft-pick { gap: 12px; margin: 6px 0; }
+.chip-btn { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; padding: 12px 18px; border: 2px solid var(--ink); background: var(--paper); border-radius: 4px; }
+.chip-btn:hover { background: var(--ink); color: var(--paper); }
+.chip-btn .dot { width: 16px; height: 16px; }
+.pile-row.active { background: #fff7e6; border-radius: 3px; padding-left: 6px; padding-right: 6px; }
+.power-row { margin: 4px 0 8px; }
+.spend-lbl { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Headline banner */
+.headline { border: 2px solid var(--ink); border-left: 8px solid var(--media); background: #eef4fb; padding: 10px 14px; border-radius: 3px; margin-bottom: 14px; }
+.map-legend { font-size: 12px; margin-top: 8px; text-align: center; }
+
+/* Dilemma card flip + reward token fly */
+.dilemma-card { transition: background .45s ease, color .45s ease, transform .3s ease; }
+.dilemma-card.answered .answer { pointer-events: none; opacity: .45; }
+.dilemma-card.answered { transform: scale(1.01); }
+.dilemma-card.accent-capitalist { background: var(--funds); color: #fff; }
+.dilemma-card.accent-supremo { background: var(--clout); color: #fff; }
+.dilemma-card.accent-showstopper { background: var(--media); color: #fff; }
+.dilemma-card.accent-idealist { background: var(--trust); color: #1a1714; }
+.dilemma-card.answered .label, .dilemma-card.answered h3 { color: inherit; }
+.answer.ans-capitalist:hover { background: var(--funds); color: #fff; border-color: var(--funds); }
+.answer.ans-supremo:hover { background: var(--clout); color: #fff; border-color: var(--clout); }
+.answer.ans-showstopper:hover { background: var(--media); color: #fff; border-color: var(--media); }
+.answer.ans-idealist:hover { background: var(--trust); color: #1a1714; border-color: var(--trust); }
+.token-burst { display: flex; gap: 10px; justify-content: center; margin-top: 18px;
+  transition: transform .8s cubic-bezier(.4,-0.3,.3,1), opacity .8s ease; }
+.token-burst.fly { transform: translate(38%, -280px) scale(.55); opacity: 0; }
+.token { width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; color: #fff; border: 2px solid rgba(0,0,0,.28); box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+.tok-funds { background: var(--funds); } .tok-clout { background: var(--clout); }
+.tok-media { background: var(--media); } .tok-trust { background: var(--trust); color: #1a1714; }
 
 /* Endgame */
 .standings { width: 100%; border-collapse: collapse; margin: 10px 0; }
