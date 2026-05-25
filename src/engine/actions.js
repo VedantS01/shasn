@@ -99,11 +99,16 @@ export function buyVoter(state, { offerId, zoneId }) {
   const s = clone(state);
   const p = s.players[s.turn.current];
 
-  // discount: Capitalist T1 sets p.usedThisTurn["capitalist:discountReady"]
+  // discount: Capitalist T1 sets p.usedThisTurn["capitalist:discountReady"].
+  // Waive one unit from the resource the player is most short on (deterministic,
+  // and maximally useful), tie-broken by larger cost then name.
   let cost = { ...offer.cost };
   if (p.usedThisTurn["capitalist:discountReady"]) {
-    const entries = Object.entries(cost).sort((a, b) => b[1] - a[1]);
+    const entries = Object.entries(cost);
     if (entries.length) {
+      entries.sort((a, b) =>
+        (p.resources[a[0]] - a[1]) - (p.resources[b[0]] - b[1]) ||
+        b[1] - a[1] || a[0].localeCompare(b[0]));
       const [r] = entries[0];
       cost[r] = Math.max(0, cost[r] - 1);
       if (cost[r] === 0) delete cost[r];
@@ -177,5 +182,49 @@ export function playConspiracy(state, { cardId, target, actorId }) {
   p.hand.splice(idx, 1);
   s.decks.conspiracyDiscard.push(cardId);
   s.log.push(`${p.name} played ${card.name}`);
+  return s;
+}
+
+// --- archetype active powers ------------------------------------------------
+export function usePower(state, { ideology, tier, params = {} }) {
+  const s = clone(state);
+  const p = s.players[s.turn.current];
+  if (tierOf(p.piles[ideology]) < tier) throw new Error("power not unlocked");
+  const key = `${ideology}:t${tier}`;
+  const onceKeys = ["capitalist:t1", "capitalist:t2", "supremo:t2", "idealist:t3"];
+  if (onceKeys.includes(key) && p.usedThisTurn[key]) throw new Error("power already used this turn");
+
+  if (key === "capitalist:t1") {
+    p.usedThisTurn["capitalist:discountReady"] = true;
+  } else if (key === "capitalist:t2") {
+    if (p.resources.funds < 3) throw new Error("need 3 funds");
+    const gain = params.gain || {};
+    if (Object.values(gain).reduce((a, b) => a + b, 0) !== 2) throw new Error("must gain exactly 2");
+    p.resources.funds -= 3;
+    for (const [r, n] of Object.entries(gain)) p.resources[r] += n;
+  } else if (key === "supremo:t2") {
+    const zone = s.zones.find((z) => z.id === params.zoneId);
+    if (!zone || (zone.pegs[p.id] || 0) <= 0) throw new Error("need presence in zone");
+    if ((zone.pegs[params.pegOwner] || 0) >= majorityThreshold(params.zoneId)) throw new Error("cannot remove a majority peg");
+    if (!zone.pegs[params.pegOwner]) throw new Error("no such peg");
+    zone.pegs[params.pegOwner] -= 1;
+    if (zone.pegs[params.pegOwner] === 0) delete zone.pegs[params.pegOwner];
+  } else if (key === "idealist:t3") {
+    const zone = s.zones.find((z) => z.id === params.zoneId);
+    const adjacentToPresence = neighborsOf(params.zoneId).some((nId) => (s.zones.find((z) => z.id === nId).pegs[p.id] || 0) > 0);
+    if (!adjacentToPresence) throw new Error("zone must neighbor your presence");
+    if ((zone.pegs[params.pegOwner] || 0) >= majorityThreshold(params.zoneId)) throw new Error("cannot sway a majority peg");
+    if (!zone.pegs[params.pegOwner]) throw new Error("no such peg");
+    zone.pegs[params.pegOwner] -= 1;
+    if (zone.pegs[params.pegOwner] === 0) delete zone.pegs[params.pegOwner];
+    zone.pegs[p.id] = (zone.pegs[p.id] || 0) + 1;
+  } else if (key === "showstopper:t1") {
+    throw new Error("showstopper:t1 is resolved by the turn loop, not usePower");
+  } else {
+    throw new Error("not an active power");
+  }
+
+  if (onceKeys.includes(key)) p.usedThisTurn[key] = true;
+  s.log.push(`${p.name} used ${key}`);
   return s;
 }
