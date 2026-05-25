@@ -1,0 +1,68 @@
+/* Resource chips & ideology accents */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-size: 12px; padding: 3px 8px; border-radius: 2px; border: 1.5px solid currentColor; background: transparent; }
+.chip.funds { color: var(--funds); } .chip.clout { color: var(--clout); }
+.chip.media { color: var(--media); } .chip.trust { color: var(--trust); }
+.swatch { width: 14px; height: 14px; border: 2px solid var(--ink); border-radius: 50%; display: inline-block; }
+
+/* Masthead */
+.masthead { text-align: center; border-bottom: 4px double var(--ink); padding-bottom: 8px; margin-bottom: 14px; }
+.masthead h1 { font-size: 44px; letter-spacing: 1px; margin: 0; }
+.masthead .label { display: block; margin-top: 2px; }
+
+/* Layout: map + side panel */
+.turn-grid { display: grid; grid-template-columns: 1fr 340px; gap: 22px; align-items: start; }
+@media (max-width: 860px) { .turn-grid { grid-template-columns: 1fr; } }
+
+/* SVG map */
+.map { width: 100%; height: auto; background: var(--paper-2); border: 2px solid var(--ink); display: block; }
+.zone-shape { fill: var(--paper); stroke: var(--ink); stroke-width: 2; }
+.zone-shape.locked { fill: var(--paper-2); }
+.zone-shape.selectable { cursor: pointer; }
+.zone-shape.selectable:hover { fill: #fff7e6; }
+.zone-name { font: 600 13px var(--sans); fill: var(--ink); pointer-events: none; }
+.zone-sub { font: 500 11px var(--sans); fill: var(--muted); pointer-events: none; }
+.peg { stroke: var(--ink); stroke-width: 1; }
+
+/* Cards (dilemma, conspiracy) */
+.card { border: 2px solid var(--ink); background: var(--paper); padding: 16px; border-radius: 2px; }
+.card h3 { font-size: 20px; }
+.answer { border: 2px solid var(--ink); background: var(--paper); padding: 12px; margin-top: 10px; text-align: left; width: 100%; font-size: 15px; font-weight: 600; }
+.answer:hover { background: var(--ink); color: var(--paper); }
+
+/* Side panel */
+.panel { border: 2px solid var(--ink); padding: 14px; border-radius: 2px; }
+.panel + .panel { margin-top: 14px; }
+.panel h3 { font-size: 16px; margin-bottom: 8px; }
+.pile-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px dashed var(--rule); gap: 8px; }
+.pile-row:last-child { border-bottom: 0; }
+.pile-row .pow { font-size: 12px; }
+.market-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--rule); }
+.market-item:last-child { border-bottom: 0; }
+.hand-card { border: 1.5px solid var(--ink); padding: 8px; border-radius: 2px; margin-top: 8px; }
+.hand-card h4 { margin: 0 0 2px; font-family: var(--serif); font-size: 14px; }
+.cost-mini { font-size: 11px; color: var(--muted); }
+.tag { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; border: 1px solid var(--ink); padding: 1px 5px; border-radius: 2px; }
+.banner { border: 2px solid var(--clout); background: #fff3ee; padding: 8px 10px; border-radius: 2px; font-weight: 600; }
+.err { border: 2px solid var(--clout); background: #fdecea; color: #7a1f17; padding: 8px 10px; border-radius: 2px; margin-bottom: 12px; font-weight: 600; }
+.tally { font-size: 13px; }
+.tally li { margin: 2px 0; }
+
+/* Privacy handoff curtain */
+.curtain { position: fixed; inset: 0; background: var(--ink); color: var(--paper); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; z-index: 50; text-align: center; padding: 24px; }
+.curtain h2 { color: var(--paper); font-size: 34px; }
+.curtain .label { color: #bdb3a0; }
+
+/* Modal */
+.modal-scrim { position: fixed; inset: 0; background: rgba(20,18,16,.55); display: flex; align-items: center; justify-content: center; z-index: 40; padding: 18px; }
+.modal { background: var(--paper); border: 2px solid var(--ink); max-width: 540px; width: 100%; padding: 22px; border-radius: 2px; }
+.modal .label { display: block; margin-bottom: 6px; }
+
+/* Setup */
+.setup-player { display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: center; margin-top: 8px; }
+
+/* Endgame */
+.standings { width: 100%; border-collapse: collapse; margin: 10px 0; }
+.standings th, .standings td { border-bottom: 1px solid var(--rule); padding: 6px 8px; text-align: left; }
+.standings tr.winner td { font-weight: 800; background: #fff7e6; }
+.recap { font-size: 13px; color: var(--muted); max-height: 180px; overflow: auto; border: 1px solid var(--rule); padding: 8px; border-radius: 2px; }

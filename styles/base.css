@@ -1,0 +1,30 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,800;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&display=swap");
+
+:root {
+  --ink: #1a1714; --paper: #f6f1e7; --paper-2: #efe7d6; --rule: #cdbfa6; --muted: #6b6256;
+  --funds: #caa12f; --clout: #b3472f; --media: #a8327d; --trust: #2f6aa8;
+  --serif: "Fraunces", Georgia, serif; --sans: "Hanken Grotesk", system-ui, sans-serif;
+  --maxw: 1100px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: var(--sans); color: var(--ink); background: var(--paper);
+  background-image: radial-gradient(rgba(0,0,0,.015) 1px, transparent 1px);
+  background-size: 4px 4px; line-height: 1.5;
+}
+h1, h2, h3 { font-family: var(--serif); font-weight: 800; line-height: 1.1; margin: 0 0 .4em; }
+#app { max-width: var(--maxw); margin: 0 auto; padding: 24px 18px 60px; }
+.rule { border: 0; border-top: 2px solid var(--ink); margin: 12px 0; }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+.muted { color: var(--muted); }
+button { font-family: var(--sans); cursor: pointer; }
+.btn { border: 2px solid var(--ink); background: var(--paper); padding: 8px 14px; font-weight: 700; border-radius: 2px; color: var(--ink); }
+.btn:hover:not([disabled]) { background: var(--ink); color: var(--paper); }
+.btn[disabled] { opacity: .4; cursor: not-allowed; }
+.btn-sm { padding: 4px 9px; font-size: 12px; }
+.btn-primary { background: var(--ink); color: var(--paper); }
+.btn-primary:hover:not([disabled]) { background: #000; }
+input, select { font-family: var(--sans); font-size: 14px; padding: 6px 8px; border: 2px solid var(--ink); background: var(--paper); border-radius: 2px; color: var(--ink); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.stack > * + * { margin-top: 10px; }

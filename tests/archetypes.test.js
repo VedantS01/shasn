@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createGame } from "../src/engine/state.js";
-import { beginTurn, answerDilemma, usePower, buyVoter } from "../src/engine/actions.js";
+import { beginTurn, answerDilemma, usePower, buyVoter, spinDilemma } from "../src/engine/actions.js";
 
 const P = [{ name: "A", color: "#1" }, { name: "B", color: "#2" }];
 function ready(seed = 1) { return answerDilemma(beginTurn(createGame({ players: P, seed })), { answerIndex: 0 }); }
@@ -37,6 +37,21 @@ test("Supremo T2 removes an opponent non-majority peg from a zone you're in", ()
 test("usePower throws when tier not unlocked", () => {
   let g = ready();
   assert.throws(() => usePower(g, { ideology: "supremo", tier: 2, params: { zoneId: "z4", pegOwner: 1 } }), /not unlocked/);
+});
+
+test("Showstopper T1 spins to a fresh dilemma, once per turn", () => {
+  let g = beginTurn(createGame({ players: P, seed: 1 }));
+  g.players[0].piles.showstopper = 2;   // tier 1
+  const first = g.turn.pendingDilemma;
+  g = spinDilemma(g);
+  assert.notEqual(g.turn.pendingDilemma, first);
+  assert.equal(g.turn.phase, "dilemma");
+  assert.throws(() => spinDilemma(g), /already spun/);
+});
+
+test("spinDilemma requires Showstopper tier 1", () => {
+  let g = beginTurn(createGame({ players: P, seed: 1 }));
+  assert.throws(() => spinDilemma(g), /Showstopper tier 1/);
 });
 
 test("Idealist T3 sways one neighboring non-majority peg to you", () => {
