@@ -1,0 +1,62 @@
+import { createGame } from "./engine/state.js";
+import * as A from "./engine/actions.js";
+import { render } from "./ui/render.js";
+import { save, load, clearSave } from "./ui/persistence.js";
+
+const root = document.getElementById("app");
+let state = null;
+let ui = { mode: "setup", placing: null, error: null };
+
+function paint() { render(root, { state, ui, dispatch, setUi }); }
+function setUi(patch) { ui = { ...ui, ...patch }; paint(); }
+
+const REDUCERS = {
+  answerDilemma: A.answerDilemma,
+  buyVoter: A.buyVoter,
+  buyConspiracy: A.buyConspiracy,
+  playConspiracy: A.playConspiracy,
+  usePower: A.usePower,
+  gerrymander: A.gerrymander,
+  spinDilemma: A.spinDilemma
+};
+
+function dispatch(action, payload = {}) {
+  try {
+    if (action === "newGame") {
+      state = A.beginTurn(createGame({ players: payload.players, seed: Date.now() >>> 0 }));
+      ui = { mode: "play", placing: null, error: null };
+      save(state); paint(); return;
+    }
+    if (action === "clearSave") {
+      clearSave(); state = null; ui = { mode: "setup", placing: null, error: null }; paint(); return;
+    }
+    if (action === "revealTurn") {
+      ui = { mode: "play", placing: null, error: null }; paint(); return;
+    }
+    if (action === "endTurn") {
+      const prev = state.turn.current;
+      state = A.endTurn(state);
+      save(state);
+      ui = { ...ui, placing: null, error: null };
+      if (state.turn.phase !== "gameover" && state.turn.current !== prev) ui.mode = "handoff";
+      paint(); return;
+    }
+    const fn = REDUCERS[action];
+    if (!fn) throw new Error(`unknown action ${action}`);
+    state = fn(state, payload);
+    if (state.turn.pendingExtraDilemma) {
+      delete state.turn.pendingExtraDilemma;
+      state = A.drawExtraDilemma(state);
+    }
+    ui = { ...ui, placing: null, error: null };
+    save(state); paint();
+  } catch (e) {
+    ui = { ...ui, error: e.message };
+    paint();
+  }
+}
+
+// Resume an in-progress game if present.
+const saved = load();
+if (saved) { state = saved; ui = { mode: "play", placing: null, error: null }; }
+paint();
