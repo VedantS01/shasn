@@ -14,10 +14,15 @@ test("createGame builds players with zeroed resources and piles", () => {
   assert.equal(g.players[0].id, 0);
 });
 
-test("createGame builds 9 empty unlocked zones", () => {
+test("createGame builds 9 zones with empty seat arrays sized to capacity", () => {
   const g = createGame({ players: PLAYERS, seed: 1 });
   assert.equal(g.zones.length, ZONES.length);
-  for (const z of g.zones) { assert.deepEqual(z.pegs, {}); assert.equal(z.lockedBy, null); }
+  for (const z of g.zones) {
+    const cap = ZONES.find((zz) => zz.id === z.id).capacity;
+    assert.equal(z.seats.length, cap);
+    assert.ok(z.seats.every((s) => s === null));
+    assert.equal(z.lockedBy, null);
+  }
 });
 
 test("decks are shuffled deterministically by seed and contain all ids", () => {
@@ -30,7 +35,7 @@ test("decks are shuffled deterministically by seed and contain all ids", () => {
 
 test("game opens in the starting-resource draft (player 0 drafts 1)", () => {
   const g = createGame({ players: PLAYERS, seed: 1 });
-  assert.deepEqual(g.turn, { current: 0, phase: "draft", pendingDilemma: null, gerrymanders: 0, draftRemaining: 1 });
+  assert.deepEqual(g.turn, { current: 0, phase: "draft", pendingDilemma: null, gerrymanders: 0, draftRemaining: 1, toPlace: 0 });
   assert.equal(g.winner, null);
 });
 

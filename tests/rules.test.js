@@ -7,9 +7,13 @@ import {
 } from "../src/engine/rules.js";
 
 const P = [{ name: "A", color: "#1" }, { name: "B", color: "#2" }];
-function withZone(g, zoneId, pegs, lockedBy = null) {
+// owners: array of seat occupants (playerId), rest of the zone stays empty
+function withZone(g, zoneId, owners = [], lockedBy = null) {
   const z = g.zones.find((z) => z.id === zoneId);
-  z.pegs = pegs; z.lockedBy = lockedBy; return g;
+  z.seats = z.seats.map(() => null);
+  owners.forEach((o, i) => { z.seats[i] = o; });
+  z.lockedBy = lockedBy;
+  return g;
 }
 
 test("zoneCapacity and majorityThreshold", () => {
@@ -18,8 +22,8 @@ test("zoneCapacity and majorityThreshold", () => {
   assert.equal(majorityThreshold("z4"), 6);   // (11+1)/2
 });
 
-test("pegCount / totalPegs", () => {
-  const g = withZone(createGame({ players: P, seed: 1 }), "z0", { 0: 2, 1: 1 });
+test("pegCount / totalPegs count seat occupants", () => {
+  const g = withZone(createGame({ players: P, seed: 1 }), "z0", [0, 0, 1]);
   const z = g.zones.find((z) => z.id === "z0");
   assert.equal(pegCount(z, 0), 2);
   assert.equal(pegCount(z, 1), 1);
@@ -27,14 +31,20 @@ test("pegCount / totalPegs", () => {
 });
 
 test("majorityHolder returns player at/over threshold else null", () => {
-  let g = withZone(createGame({ players: P, seed: 1 }), "z0", { 0: 3, 1: 1 });
+  let g = withZone(createGame({ players: P, seed: 1 }), "z0", [0, 0, 0, 1]);
   assert.equal(majorityHolder(g.zones.find((z) => z.id === "z0")), 0);
-  g = withZone(createGame({ players: P, seed: 1 }), "z0", { 0: 2, 1: 2 });
+  g = withZone(createGame({ players: P, seed: 1 }), "z0", [0, 0, 1, 1]);
   assert.equal(majorityHolder(g.zones.find((z) => z.id === "z0")), null);
 });
 
-test("isZoneFull when total pegs reach capacity", () => {
-  const g = withZone(createGame({ players: P, seed: 1 }), "z0", { 0: 3, 1: 2 });
+test("the volatile seat counts toward majority", () => {
+  const g = withZone(createGame({ players: P, seed: 1 }), "z0", [0, 0]); // 2 of 3 needed
+  g.zones.find((z) => z.id === "z0").volatileOwner = 0;                  // +1 effective
+  assert.equal(majorityHolder(g.zones.find((z) => z.id === "z0")), 0);
+});
+
+test("isZoneFull when every normal seat is occupied", () => {
+  const g = withZone(createGame({ players: P, seed: 1 }), "z0", [0, 0, 0, 1, 1]); // cap 5
   assert.equal(isZoneFull(g.zones.find((z) => z.id === "z0")), true);
 });
 
@@ -42,12 +52,12 @@ test("placement: first peg anywhere; then only own or adjacent zones; never lock
   let g = createGame({ players: P, seed: 1 });
   assert.equal(hasPresence(g, 0), false);
   assert.equal(canPlaceInZone(g, 0, "z8"), true);            // no presence -> anywhere
-  g = withZone(g, "z0", { 0: 1 });
+  g = withZone(g, "z0", [0]);
   assert.equal(hasPresence(g, 0), true);
   assert.equal(canPlaceInZone(g, 0, "z0"), true);            // own zone
   assert.equal(canPlaceInZone(g, 0, "z1"), true);            // neighbor of z0
   assert.equal(canPlaceInZone(g, 0, "z8"), false);           // not adjacent to presence
-  g = withZone(g, "z1", { 1: 5 }, 1);                        // locked
+  g = withZone(g, "z1", [1, 1, 1, 1, 1], 1);                 // locked
   assert.equal(canPlaceInZone(g, 0, "z1"), false);
 });
 

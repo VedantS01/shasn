@@ -2,6 +2,7 @@ import { createGame } from "./engine/state.js";
 import * as A from "./engine/actions.js";
 import { render } from "./ui/render.js";
 import { save, load, clearSave } from "./ui/persistence.js";
+import { isNarrationEnabled, setNarrationEnabled, cancelNarration } from "./ui/narration.js";
 
 const root = document.getElementById("app");
 let state = null;
@@ -13,6 +14,7 @@ function setUi(patch) { ui = { ...ui, ...patch }; paint(); }
 const REDUCERS = {
   answerDilemma: A.answerDilemma,
   buyVoter: A.buyVoter,
+  placeToken: A.placeToken,
   occupyVolatile: A.occupyVolatile,
   buyConspiracy: A.buyConspiracy,
   playConspiracy: A.playConspiracy,
@@ -41,6 +43,23 @@ function dispatch(action, payload = {}) {
     if (action === "clearSave") {
       clearSave(); state = null; ui = { mode: "setup", placing: null, error: null }; paint(); return;
     }
+    if (action === "continueGame") {
+      const saved = load();
+      if (saved) { state = saved; ui = { mode: "play", placing: null, error: null, settingsOpen: false }; }
+      paint(); return;
+    }
+    if (action === "requestNewGame") {
+      const ok = typeof window === "undefined" || !state ||
+        window.confirm("Start a new game? This ends the current campaign.");
+      if (ok) { cancelNarration(); clearSave(); state = null; ui = { mode: "setup", placing: null, error: null, settingsOpen: false }; }
+      else { ui = { ...ui, settingsOpen: false }; }
+      paint(); return;
+    }
+    if (action === "toggleNarration") {
+      setNarrationEnabled(!isNarrationEnabled());
+      ui = { ...ui, error: null };   // keep the settings menu open
+      paint(); return;
+    }
     if (action === "revealTurn") {
       ui = { mode: "play", placing: null, error: null }; paint(); return;
     }
@@ -67,7 +86,8 @@ function dispatch(action, payload = {}) {
   }
 }
 
-// Resume an in-progress game if present.
-const saved = load();
-if (saved) { state = saved; ui = { mode: "play", placing: null, error: null }; }
+// Open on the setup screen. If a campaign is saved, setup offers "Continue";
+// otherwise the player starts fresh. New Game is also reachable via the gear menu.
+state = null;
+ui = { mode: "setup", placing: null, error: null, settingsOpen: false };
 paint();

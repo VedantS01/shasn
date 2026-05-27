@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createGame } from "../src/engine/state.js";
-import { serialize, deserialize, save, load, clearSave } from "../src/ui/persistence.js";
+import { serialize, deserialize, save, load, clearSave, hasSave } from "../src/ui/persistence.js";
 
 const P = [{ name: "A", color: "#1" }, { name: "B", color: "#2" }];
 
@@ -18,4 +18,13 @@ test("save/load via an injected storage", () => {
   assert.deepEqual(load(mem), g);
   clearSave(mem);
   assert.equal(load(mem), null);
+});
+
+test("hasSave reports whether a campaign is stored", () => {
+  const mem = (() => { const m = {}; return { getItem: (k) => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = v; }, removeItem: (k) => { delete m[k]; } }; })();
+  assert.equal(hasSave(mem), false);
+  save(createGame({ players: P, seed: 1 }), mem);
+  assert.equal(hasSave(mem), true);
+  clearSave(mem);
+  assert.equal(hasSave(mem), false);
 });

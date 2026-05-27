@@ -16,3 +16,6 @@ export function clearSave(storage = globalThis.localStorage) {
   if (!storage) return;
   storage.removeItem(KEY);
 }
+export function hasSave(storage = globalThis.localStorage) {
+  return !!(storage && storage.getItem(KEY));
+}

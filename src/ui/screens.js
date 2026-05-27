@@ -1,11 +1,13 @@
 import { renderMap } from "./map.js";
+import { narrateDilemma, narrateChoice, isNarrationEnabled } from "./narration.js";
+import { hasSave } from "./persistence.js";
 import { DILEMMA_BY_ID } from "../data/dilemmas.js";
-import { VOTER_MARKET, VOTER_BY_ID, VOLATILE_COST } from "../data/voters.js";
+import { VOTER_MARKET, VOLATILE_COST } from "../data/voters.js";
 import { CONSPIRACY_BY_ID } from "../data/conspiracies.js";
 import { POWERS } from "../engine/archetypes.js";
 import { IDEOLOGIES, RESOURCES, RESOURCE_OF, tierOf } from "../engine/constants.js";
 import {
-  canPlaceInZone, canReachZone, totalPegs, zoneCapacity, majorityThreshold, standings, neighborsOf
+  canReachZone, majorityThreshold, standings, neighborsOf, pegCount, isZoneFull
 } from "../engine/rules.js";
 
 const COLORS = ["#b3472f", "#2f6aa8", "#caa12f", "#7a3f9d", "#2f7d54"];
@@ -37,14 +39,40 @@ function resourceChips(player) {
   return h("div", { class: "chips" },
     ...RESOURCES.map((r) => h("span", { class: `chip ${r}` }, `${RES_LABEL[r]}: ${player.resources[r]}`)));
 }
-function masthead(sub) {
-  return h("header", { class: "masthead" }, h("h1", {}, "SHASN"), h("span", { class: "label" }, sub));
+function masthead(ctx, sub) {
+  return h("header", { class: "masthead" },
+    settingsControl(ctx),
+    h("h1", {}, "SHASN"),
+    h("span", { class: "label" }, sub));
+}
+
+// Gear button (top-right) opening a small menu: start a new game and toggle
+// dilemma narration. Open/closed state lives in ui.settingsOpen.
+function settingsControl(ctx) {
+  const { ui } = ctx;
+  const open = !!ui.settingsOpen;
+  const gear = h("button", { class: "gear-btn", "aria-label": "Settings", "aria-expanded": String(open),
+    onclick: () => ctx.setUi({ settingsOpen: !open }) }, "⚙");
+  if (!open) return h("div", { class: "settings" }, gear);
+  const narrOn = isNarrationEnabled();
+  const menu = h("div", { class: "settings-menu pop" },
+    h("div", { class: "label" }, "Settings"),
+    h("button", { class: "btn btn-sm settings-row", onclick: () => ctx.dispatch("toggleNarration") },
+      `Narration: ${narrOn ? "On" : "Off"}`),
+    h("button", { class: "btn btn-sm settings-row", onclick: () => ctx.dispatch("requestNewGame") }, "New game…"),
+    h("button", { class: "btn btn-sm settings-row", onclick: () => ctx.setUi({ settingsOpen: false }) }, "Close"));
+  return h("div", { class: "settings" }, gear, menu);
 }
 
 // --- setup ------------------------------------------------------------------
 export function setupScreen(ctx) {
   const root = h("div");
-  root.appendChild(masthead("A pass-and-play political strategy game"));
+  root.appendChild(masthead(ctx, "A pass-and-play political strategy game"));
+  if (hasSave()) {
+    root.appendChild(h("div", { class: "panel pop resume-panel" },
+      h("p", { class: "muted" }, "A saved campaign is in progress."),
+      h("button", { class: "btn btn-primary", onclick: () => ctx.dispatch("continueGame") }, "Continue saved game")));
+  }
   const rows = [];
   for (let i = 0; i < 5; i++) {
     const input = h("input", { type: "text", value: `Player ${i + 1}`, "aria-label": `Player ${i + 1} name`, maxlength: "16" });
@@ -78,7 +106,7 @@ export function draftScreen(ctx) {
   const { state } = ctx;
   const p = state.players[state.turn.current];
   const root = h("div");
-  root.appendChild(masthead("Starting draft — claim your opening resources"));
+  root.appendChild(masthead(ctx, "Starting draft — claim your opening resources"));
 
   const picker = h("div", { class: "chips draft-pick" },
     ...RESOURCES.map((r) => h("button", { class: `chip-btn ${r}`, onclick: () => ctx.dispatch("draftResource", { resource: r }) },
@@ -104,31 +132,33 @@ export function turnScreen(ctx) {
   const me = state.players[state.turn.current];
   const root = h("div");
   if (ui.error) root.appendChild(h("div", { class: "err", role: "alert" }, ui.error));
-  root.appendChild(masthead(`${me.name}'s turn · ${state.turn.phase === "dilemma" ? "answer the dilemma" : "spend & maneuver"}`));
+  root.appendChild(masthead(ctx, `${me.name}'s turn · ${state.turn.phase === "dilemma" ? "answer the dilemma" : "spend & maneuver"}`));
   if (state.lastHeadline) root.appendChild(headlineBanner(ctx, state.lastHeadline));
 
-  const placingOffer = ui.placing ? VOTER_BY_ID[ui.placing] : null;
-  let selectable = [];
-  if (placingOffer) {
-    selectable = state.zones
-      .filter((z) => canPlaceInZone(state, me.id, z.id) && (zoneCapacity(z.id) - totalPegs(z)) >= placingOffer.value)
-      .map((z) => z.id);
-  }
+  // Placement mode: after buying a voter you hold `toPlace` tokens to drop on
+  // specific empty circles. Highlight every reachable, non-full, unlocked zone.
+  const placing = state.turn.toPlace > 0;
+  const placeableZoneIds = placing
+    ? state.zones.filter((z) => z.lockedBy === null && !isZoneFull(z) && canReachZone(state, me.id, z.id)).map((z) => z.id)
+    : [];
+
   const canAffordVol = RESOURCES.every((r) => me.resources[r] >= (VOLATILE_COST[r] || 0));
-  const volatileZoneIds = state.turn.phase === "actions" && canAffordVol
+  const volatileZoneIds = state.turn.phase === "actions" && !placing && canAffordVol
     ? state.zones.filter((z) => z.volatileOwner === null && canReachZone(state, me.id, z.id)).map((z) => z.id)
     : [];
 
   const map = renderMap(state, {
-    selectableZoneIds: selectable,
-    onZoneClick: (zoneId) => ctx.dispatch("buyVoter", { offerId: ui.placing, zoneId }),
+    placeableZoneIds,
+    onSeatClick: (zoneId, seatIndex) => ctx.dispatch("placeToken", { zoneId, seatIndex }),
     volatileZoneIds,
     onVolatileClick: (zoneId) => ctx.dispatch("occupyVolatile", { zoneId })
   });
-  const mapCol = h("div", {}, map,
-    h("p", { class: "map-legend muted" }, "⚡ volatile seat — costs 1 Clout + 1 Media, can't be gerrymandered, and triggers a Headline."));
+  const legend = placing
+    ? h("p", { class: "map-legend place-prompt" }, `Place ${state.turn.toPlace} voter${state.turn.toPlace > 1 ? "s" : ""} — click a highlighted empty circle.`)
+    : h("p", { class: "map-legend muted" }, "⚡ volatile seat — costs 1 Clout + 1 Media, can't be gerrymandered, and triggers a Headline.");
+  const mapCol = h("div", {}, map, legend);
 
-  const panel = h("div", {}, playerPanel(ctx, me), marketPanel(ctx, me), conspiracyPanel(ctx, me), gerrymanderPanel(ctx, me), endPanel(ctx));
+  const panel = h("div", {}, playerPanel(ctx, me), marketPanel(ctx, me, placing), conspiracyPanel(ctx, me, placing), gerrymanderPanel(ctx, me), endPanel(ctx, placing, placeableZoneIds.length > 0));
   root.appendChild(h("div", { class: "turn-grid" }, mapCol, panel));
   if (state.turn.phase === "dilemma") root.appendChild(dilemmaModal(ctx, me));
   return root;
@@ -211,32 +241,32 @@ function activePowerControls(ctx, me, ide, tier) {
 function pegTargets(state, meId, { requirePresence = false, adjacentToPresence = false } = {}) {
   const out = [];
   for (const z of state.zones) {
-    if (requirePresence && (z.pegs[meId] || 0) <= 0) continue;
-    if (adjacentToPresence && !neighborsOf(z.id).some((nId) => (state.zones.find((x) => x.id === nId).pegs[meId] || 0) > 0)) continue;
+    if (requirePresence && pegCount(z, meId) <= 0) continue;
+    if (adjacentToPresence && !neighborsOf(z.id).some((nId) => pegCount(state.zones.find((x) => x.id === nId), meId) > 0)) continue;
     const need = majorityThreshold(z.id);
-    for (const [pid, n] of Object.entries(z.pegs)) {
-      if (Number(pid) === meId || n >= need) continue;
-      out.push({ key: `${z.id}:${pid}`, zoneId: z.id, pegOwner: Number(pid), label: `${z.id} · ${state.players[pid].name}` });
+    for (const pid of new Set(z.seats.filter((s) => s !== null))) {
+      if (pid === meId || pegCount(z, pid) >= need) continue;
+      out.push({ key: `${z.id}:${pid}`, zoneId: z.id, pegOwner: pid, label: `${z.id} · ${state.players[pid].name}` });
     }
   }
   return out;
 }
 
-function marketPanel(ctx, me) {
-  const { state, ui } = ctx;
+function marketPanel(ctx, me, placing) {
+  const { state } = ctx;
   const inActions = state.turn.phase === "actions";
+  const canAfford = (o) => RESOURCES.every((r) => me.resources[r] >= (o.cost[r] || 0));
   const items = VOTER_MARKET.map((o) => h("div", { class: "market-item" },
     h("span", {}, h("strong", {}, o.label), ` · ${o.value} vote${o.value > 1 ? "s" : ""}`, h("div", { class: "cost-mini" }, costLabel(o.cost))),
-    h("button", { class: "btn btn-sm" + (ui.placing === o.id ? " btn-primary" : ""), disabled: !inActions ? "disabled" : null,
-      onclick: () => ctx.setUi({ placing: ui.placing === o.id ? null : o.id, error: null }) }, ui.placing === o.id ? "Choosing…" : "Place")));
-  const hint = ui.placing
-    ? h("p", { class: "muted" }, "Click a highlighted constituency on the map. ",
-        h("button", { class: "btn btn-sm", onclick: () => ctx.setUi({ placing: null }) }, "Cancel"))
+    h("button", { class: "btn btn-sm", disabled: (!inActions || placing || !canAfford(o)) ? "disabled" : null,
+      onclick: () => ctx.dispatch("buyVoter", { offerId: o.id }) }, "Buy")));
+  const hint = placing
+    ? h("p", { class: "muted" }, `Placing ${state.turn.toPlace} voter${state.turn.toPlace > 1 ? "s" : ""} — drop them on the map before buying more.`)
     : null;
   return h("div", { class: "panel" }, h("h3", {}, "Voter market"), ...items, hint);
 }
 
-function conspiracyPanel(ctx, me) {
+function conspiracyPanel(ctx, me, placing) {
   const { state } = ctx;
   const inActions = state.turn.phase === "actions";
   const inputs = {};
@@ -247,7 +277,7 @@ function conspiracyPanel(ctx, me) {
     spendRow.appendChild(h("label", { class: "cost-mini spend-lbl" }, h("span", { class: `dot ${r}` }), inp));
   }
   const min = tierOf(me.piles.showstopper) >= 2 ? 3 : 4;
-  const buy = h("button", { class: "btn btn-sm", disabled: !inActions ? "disabled" : null, onclick: () => {
+  const buy = h("button", { class: "btn btn-sm", disabled: (!inActions || placing) ? "disabled" : null, onclick: () => {
     const spend = {};
     for (const r of RESOURCES) { const v = Number(inputs[r].value) || 0; if (v > 0) spend[r] = v; }
     ctx.dispatch("buyConspiracy", { spend });
@@ -297,12 +327,12 @@ function gerrymanderPanel(ctx, me) {
   const moves = [];
   for (const z of state.zones) {
     const need = majorityThreshold(z.id);
-    for (const [pid, n] of Object.entries(z.pegs)) {
-      if (n >= need) continue;
+    for (const pid of new Set(z.seats.filter((s) => s !== null))) {
+      if (pegCount(z, pid) >= need) continue;
       for (const nId of neighborsOf(z.id)) {
         const dest = state.zones.find((x) => x.id === nId);
-        if (totalPegs(dest) >= zoneCapacity(nId)) continue;
-        moves.push({ key: `${z.id}>${nId}:${pid}`, fromZone: z.id, toZone: nId, pegOwner: Number(pid), label: `${state.players[pid].name}: ${z.id} → ${nId}` });
+        if (isZoneFull(dest)) continue;
+        moves.push({ key: `${z.id}>${nId}:${pid}`, fromZone: z.id, toZone: nId, pegOwner: pid, label: `${state.players[pid].name}: ${z.id} → ${nId}` });
       }
     }
   }
@@ -319,15 +349,19 @@ function gerrymanderPanel(ctx, me) {
   return h("div", { class: "panel" }, h("div", { class: "banner pop" }, `Gerrymander available × ${state.turn.gerrymanders}`), h("div", { style: "margin-top:8px" }, body));
 }
 
-function endPanel(ctx) {
+function endPanel(ctx, placing, canStillPlace) {
   const { state } = ctx;
   const inActions = state.turn.phase === "actions";
   const rows = standings(state).map((s) => h("li", {}, `${s.name}: ${s.zones} zones, ${s.pegs} votes`));
+  // Block ending the turn while you still hold placeable tokens (avoids wasting a
+  // paid voter); if nowhere legal remains, allow ending so play can't deadlock.
+  const blockEnd = placing && canStillPlace;
   return h("div", { class: "panel" },
     h("h3", {}, "Standings"),
     h("ul", { class: "tally" }, ...rows),
     h("hr", { class: "rule" }),
-    h("button", { class: "btn btn-primary", disabled: !inActions ? "disabled" : null, onclick: () => ctx.dispatch("endTurn") }, "End turn →"));
+    blockEnd ? h("p", { class: "cost-mini" }, "Place your bought voters before ending the turn.") : null,
+    h("button", { class: "btn btn-primary", disabled: (!inActions || blockEnd) ? "disabled" : null, onclick: () => ctx.dispatch("endTurn") }, "End turn →"));
 }
 
 function dilemmaModal(ctx, me) {
@@ -336,10 +370,15 @@ function dilemmaModal(ctx, me) {
   const cardEl = h("div", { class: "modal dilemma-card pop" },
     h("span", { class: "label" }, `${me.name} — a dilemma`),
     h("h3", {}, card.question));
+  // Read the question and options aloud when the dilemma appears (no-op if muted).
+  narrateDilemma(card);
   const mkAnswer = (idx) => {
     // Neutral styling — the ideology/payout must stay hidden until the player commits.
     const btn = h("button", { class: "answer" }, card.answers[idx].label);
-    btn.addEventListener("click", () => animateAnswer(ctx, cardEl, card.answers[idx], idx));
+    btn.addEventListener("click", () => {
+      narrateChoice(card.answers[idx].label);   // read back the chosen option
+      animateAnswer(ctx, cardEl, card.answers[idx], idx);
+    });
     return btn;
   };
   cardEl.appendChild(mkAnswer(0));
@@ -392,7 +431,7 @@ export function endgameScreen(ctx) {
       h("td", {}, s.name), h("td", {}, String(s.zones)), h("td", {}, String(s.pegs)))));
   const recap = h("div", { class: "recap" }, ...state.log.slice(-14).map((l) => h("div", {}, l)));
   return h("div", {},
-    masthead(`${state.players[state.winner].name} forms the government`),
+    masthead(ctx, `${state.players[state.winner].name} forms the government`),
     h("div", { class: "panel pop" }, h("h3", {}, "Final standings"), table,
       h("hr", { class: "rule" }), h("div", { class: "label" }, "How the nation voted"), recap,
       h("hr", { class: "rule" }),

@@ -8,8 +8,8 @@ import { HEADLINE_BY_ID } from "../data/headlines.js";
 import { resolveEffect } from "./conspiracies.js";
 import { resolveHeadline } from "./headlines.js";
 import {
-  isGameOver, canPlaceInZone, canReachZone, majorityHolder, majorityThreshold,
-  neighborsOf, isZoneFull, totalPegs, zoneCapacity, effectivePegs
+  isGameOver, canReachZone, majorityHolder, majorityThreshold,
+  neighborsOf, emptySeats, pegCount, effectivePegs
 } from "./rules.js";
 
 // --- deck helpers -----------------------------------------------------------
@@ -72,6 +72,7 @@ export function beginTurn(state) {
   s.turn.pendingDilemma = drawDilemma(s);
   s.turn.phase = "dilemma";
   s.turn.gerrymanders = 0;
+  s.turn.toPlace = 0;
   return s;
 }
 
@@ -148,16 +149,28 @@ function relockZones(state) {
   }
 }
 
-export function buyVoter(state, { offerId, zoneId }) {
+// lock a zone and grant gerrymander(s) if `p` just reached a majority there
+function lockIfMajority(s, zone, p) {
+  if (zone.lockedBy === null && majorityHolder(zone) === p.id) {
+    zone.lockedBy = p.id;
+    let grants = 1;
+    if (tierOf(p.piles.supremo) >= 1) grants += 1;   // Supremo T1
+    s.turn.gerrymanders += grants;
+    s.log.push(`${p.name} locked ${zone.id}`);
+  }
+}
+
+// Buy a voter card: pays its cost and grants `value` tokens to place. The player
+// then chooses which empty circle in which zone each token goes (see placeToken).
+export function buyVoter(state, { offerId }) {
   if (state.turn.phase !== "actions") throw new Error("buy only in actions phase");
+  if (state.turn.toPlace > 0) throw new Error("finish placing your voters first");
   const offer = VOTER_BY_ID[offerId];
   if (!offer) throw new Error("unknown voter offer");
   const s = clone(state);
   const p = s.players[s.turn.current];
 
-  // discount: Capitalist T1 sets p.usedThisTurn["capitalist:discountReady"].
-  // Waive one unit from the resource the player is most short on (deterministic,
-  // and maximally useful), tie-broken by larger cost then name.
+  // discount: Capitalist T1 waives one unit of the resource the player is most short on
   let cost = { ...offer.cost };
   if (p.usedThisTurn["capitalist:discountReady"]) {
     const entries = Object.entries(cost);
@@ -172,21 +185,28 @@ export function buyVoter(state, { offerId, zoneId }) {
     delete p.usedThisTurn["capitalist:discountReady"];
   }
   if (!canAfford(p, cost)) throw new Error("cannot afford voter");
-  if (!canPlaceInZone(s, p.id, zoneId)) throw new Error("cannot place in that zone");
-  const zone = s.zones.find((z) => z.id === zoneId);
-  if (totalPegs(zone) + offer.value > zoneCapacity(zoneId)) throw new Error("exceeds zone capacity");
-
   for (const [r, n] of Object.entries(cost)) p.resources[r] -= n;
-  zone.pegs[p.id] = (zone.pegs[p.id] || 0) + offer.value;
-  s.log.push(`${p.name} placed ${offer.value} in ${zoneId}`);
+  s.turn.toPlace = offer.value;
+  s.log.push(`${p.name} bought ${offer.label} (${offer.value} to place)`);
+  return s;
+}
 
-  if (zone.lockedBy === null && majorityHolder(zone) === p.id) {
-    zone.lockedBy = p.id;
-    let grants = 1;
-    if (tierOf(p.piles.supremo) >= 1) grants += 1;   // Supremo T1
-    s.turn.gerrymanders += grants;
-    s.log.push(`${p.name} locked ${zoneId}`);
+// Place one bought token on a specific empty circle in a reachable, unlocked zone.
+export function placeToken(state, { zoneId, seatIndex }) {
+  if (state.turn.phase !== "actions") throw new Error("place only in actions phase");
+  if (state.turn.toPlace <= 0) throw new Error("no voters to place");
+  const s = clone(state);
+  const p = s.players[s.turn.current];
+  const zone = s.zones.find((z) => z.id === zoneId);
+  if (!zone) throw new Error("no such zone");
+  if (!canReachZone(s, p.id, zoneId)) throw new Error("cannot place in that zone");
+  if (seatIndex == null || seatIndex < 0 || seatIndex >= zone.seats.length || zone.seats[seatIndex] !== null) {
+    throw new Error("that circle is not available");
   }
+  zone.seats[seatIndex] = p.id;
+  s.turn.toPlace -= 1;
+  s.log.push(`${p.name} placed a voter in ${zoneId}`);
+  lockIfMajority(s, zone, p);
   return s;
 }
 
@@ -196,13 +216,13 @@ export function gerrymander(state, { fromZone, toZone, pegOwner }) {
   const s = clone(state);
   const from = s.zones.find((z) => z.id === fromZone);
   const to = s.zones.find((z) => z.id === toZone);
-  if ((from.pegs[pegOwner] || 0) <= 0) throw new Error("no such peg to move");
-  if ((from.pegs[pegOwner] || 0) >= majorityThreshold(fromZone)) throw new Error("cannot move a non-majority peg from a majority stack");
-  if (isZoneFull(to)) throw new Error("destination full");
+  if (pegCount(from, pegOwner) <= 0) throw new Error("no such peg to move");
+  if (pegCount(from, pegOwner) >= majorityThreshold(fromZone)) throw new Error("cannot move a non-majority peg from a majority stack");
+  const dest = emptySeats(to);
+  if (dest.length === 0) throw new Error("destination full");
 
-  from.pegs[pegOwner] -= 1;
-  if (from.pegs[pegOwner] === 0) delete from.pegs[pegOwner];
-  to.pegs[pegOwner] = (to.pegs[pegOwner] || 0) + 1;
+  from.seats[from.seats.indexOf(pegOwner)] = null;
+  to.seats[dest[0]] = pegOwner;
   s.turn.gerrymanders -= 1;
   s.log.push(`gerrymander: moved a ${s.players[pegOwner].name} peg ${fromZone}→${toZone}`);
   relockZones(s);
@@ -213,6 +233,7 @@ export function gerrymander(state, { fromZone, toZone, pegOwner }) {
 // a Headline event immediately on the placer.
 export function occupyVolatile(state, { zoneId }) {
   if (state.turn.phase !== "actions") throw new Error("act only in actions phase");
+  if (state.turn.toPlace > 0) throw new Error("finish placing your voters first");
   const s = clone(state);
   const p = s.players[s.turn.current];
   const zone = s.zones.find((z) => z.id === zoneId);
@@ -234,19 +255,14 @@ export function occupyVolatile(state, { zoneId }) {
     s.log.push(`Headline: ${headline.name}`);
   }
 
-  if (zone.lockedBy === null && majorityHolder(zone) === p.id) {
-    zone.lockedBy = p.id;
-    let grants = 1;
-    if (tierOf(p.piles.supremo) >= 1) grants += 1;
-    s.turn.gerrymanders += grants;
-    s.log.push(`${p.name} locked ${zoneId}`);
-  }
+  lockIfMajority(s, zone, p);
   return s;
 }
 
 // --- conspiracies -----------------------------------------------------------
 export function buyConspiracy(state, { spend }) {
   if (state.turn.phase !== "actions") throw new Error("buy only in actions phase");
+  if (state.turn.toPlace > 0) throw new Error("finish placing your voters first");
   const s = clone(state);
   const p = s.players[s.turn.current];
   const total = Object.values(spend).reduce((a, b) => a + b, 0);
@@ -295,20 +311,19 @@ export function usePower(state, { ideology, tier, params = {} }) {
     for (const [r, n] of Object.entries(gain)) p.resources[r] += n;
   } else if (key === "supremo:t2") {
     const zone = s.zones.find((z) => z.id === params.zoneId);
-    if (!zone || (zone.pegs[p.id] || 0) <= 0) throw new Error("need presence in zone");
-    if ((zone.pegs[params.pegOwner] || 0) >= majorityThreshold(params.zoneId)) throw new Error("cannot remove a majority peg");
-    if (!zone.pegs[params.pegOwner]) throw new Error("no such peg");
-    zone.pegs[params.pegOwner] -= 1;
-    if (zone.pegs[params.pegOwner] === 0) delete zone.pegs[params.pegOwner];
+    if (!zone || pegCount(zone, p.id) <= 0) throw new Error("need presence in zone");
+    if (pegCount(zone, params.pegOwner) >= majorityThreshold(params.zoneId)) throw new Error("cannot remove a majority peg");
+    const idx = zone.seats.indexOf(params.pegOwner);
+    if (idx < 0) throw new Error("no such peg");
+    zone.seats[idx] = null;
   } else if (key === "idealist:t3") {
     const zone = s.zones.find((z) => z.id === params.zoneId);
-    const adjacentToPresence = neighborsOf(params.zoneId).some((nId) => (s.zones.find((z) => z.id === nId).pegs[p.id] || 0) > 0);
+    const adjacentToPresence = neighborsOf(params.zoneId).some((nId) => pegCount(s.zones.find((z) => z.id === nId), p.id) > 0);
     if (!adjacentToPresence) throw new Error("zone must neighbor your presence");
-    if ((zone.pegs[params.pegOwner] || 0) >= majorityThreshold(params.zoneId)) throw new Error("cannot sway a majority peg");
-    if (!zone.pegs[params.pegOwner]) throw new Error("no such peg");
-    zone.pegs[params.pegOwner] -= 1;
-    if (zone.pegs[params.pegOwner] === 0) delete zone.pegs[params.pegOwner];
-    zone.pegs[p.id] = (zone.pegs[p.id] || 0) + 1;
+    if (pegCount(zone, params.pegOwner) >= majorityThreshold(params.zoneId)) throw new Error("cannot sway a majority peg");
+    const idx = zone.seats.indexOf(params.pegOwner);
+    if (idx < 0) throw new Error("no such peg");
+    zone.seats[idx] = p.id;
   } else if (key === "showstopper:t1") {
     throw new Error("showstopper:t1 is resolved by the turn loop, not usePower");
   } else {

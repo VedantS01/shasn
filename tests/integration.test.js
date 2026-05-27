@@ -1,11 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createGame } from "../src/engine/state.js";
-import { beginTurn, answerDilemma, buyVoter, endTurn } from "../src/engine/actions.js";
-import { canPlaceInZone, isZoneFull, totalPegs, zoneCapacity } from "../src/engine/rules.js";
+import { beginTurn, answerDilemma, buyVoter, placeToken, endTurn } from "../src/engine/actions.js";
+import { canPlaceInZone, canReachZone, isZoneFull, totalPegs, zoneCapacity, emptySeats } from "../src/engine/rules.js";
 
 const P = [{ name: "A", color: "#1" }, { name: "B", color: "#2" }];
 function topUp(g, pid) { Object.assign(g.players[pid].resources, { funds: 9, clout: 9, media: 9, trust: 9 }); return g; }
+// place every bought token greedily into the first reachable, non-full, unlocked zone
+function placeAll(g) {
+  while (g.turn.toPlace > 0) {
+    const zone = g.zones.find((z) => z.lockedBy === null && emptySeats(z).length > 0 && canReachZone(g, g.turn.current, z.id));
+    if (!zone) break;   // nowhere legal to place — forfeit the rest (engine resets on endTurn)
+    g = placeToken(g, { zoneId: zone.id, seatIndex: emptySeats(zone)[0] });
+  }
+  return g;
+}
 
 test("a greedy bot game reaches game over with a valid winner and no overfilled zones", () => {
   let g = beginTurn(createGame({ players: P, seed: 2 }));
@@ -15,7 +24,7 @@ test("a greedy bot game reaches game over with a valid winner and no overfilled 
     g = topUp(g, g.turn.current);
     const me = g.turn.current;
     const zone = g.zones.find((z) => z.lockedBy === null && !isZoneFull(z) && canPlaceInZone(g, me, z.id));
-    if (zone) g = buyVoter(g, { offerId: "v1", zoneId: zone.id });
+    if (zone) { g = buyVoter(g, { offerId: "v1" }); g = placeAll(g); }
     g = endTurn(g);
   }
   assert.equal(g.turn.phase, "gameover", "game should end within the guard");
@@ -37,7 +46,8 @@ test("the engine plays many seeds to completion deterministically", () => {
       const zone = g.zones.find((z) => z.lockedBy === null && !isZoneFull(z) && canPlaceInZone(g, me, z.id));
       if (zone) {
         const room = zoneCapacity(zone.id) - totalPegs(zone);
-        g = buyVoter(g, { offerId: room >= 2 ? "v2" : "v1", zoneId: zone.id });
+        g = buyVoter(g, { offerId: room >= 2 ? "v2" : "v1" });
+        g = placeAll(g);
       }
       g = endTurn(g);
     }

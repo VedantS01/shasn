@@ -1,5 +1,5 @@
 import { makeRng, shuffle } from "./rng.js";
-import { ZONES } from "../data/map.js";
+import { ZONES, ZONE_BY_ID } from "../data/map.js";
 import { DILEMMAS } from "../data/dilemmas.js";
 import { CONSPIRACIES } from "../data/conspiracies.js";
 import { HEADLINES } from "../data/headlines.js";
@@ -17,8 +17,9 @@ export function createGame({ players, seed = 1 }) {
       hand: [],
       usedThisTurn: {}
     })),
-    // volatileOwner: an extra, non-gerrymanderable seat per zone (triggers a Headline)
-    zones: ZONES.map((z) => ({ id: z.id, pegs: {}, lockedBy: null, volatileOwner: null })),
+    // seats: one entry per vote circle (playerId | null). volatileOwner is an extra,
+    // non-gerrymanderable seat per zone that triggers a Headline.
+    zones: ZONES.map((z) => ({ id: z.id, seats: new Array(ZONE_BY_ID[z.id].capacity).fill(null), lockedBy: null, volatileOwner: null })),
     decks: {
       dilemmaDraw: shuffle(DILEMMAS.map((d) => d.id), rng),
       dilemmaDiscard: [],
@@ -29,7 +30,7 @@ export function createGame({ players, seed = 1 }) {
     },
     // Game opens in a starting-resource draft: player i (1-indexed) drafts i tokens,
     // in player order, mitigating the first player's placement advantage.
-    turn: { current: 0, phase: "draft", pendingDilemma: null, gerrymanders: 0, draftRemaining: 1 },
+    turn: { current: 0, phase: "draft", pendingDilemma: null, gerrymanders: 0, draftRemaining: 1, toPlace: 0 },
     lastHeadline: null,
     log: [],
     winner: null

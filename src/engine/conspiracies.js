@@ -1,4 +1,4 @@
-import { majorityThreshold } from "./rules.js";
+import { majorityThreshold, pegCount } from "./rules.js";
 
 // Each resolver mutates the (already cloned) state in place.
 export const RESOLVERS = {
@@ -26,10 +26,10 @@ export const RESOLVERS = {
     const zone = state.zones.find((z) => z.id === ctx.target.zoneId);
     if (zone.protected && zone.lockedBy !== null) throw new Error("zone is protected");
     const owner = ctx.target.pegOwner;
-    if ((zone.pegs[owner] || 0) >= majorityThreshold(zone.id)) throw new Error("cannot remove a majority peg");
-    if (!zone.pegs[owner]) throw new Error("no such peg");
-    zone.pegs[owner] -= 1;
-    if (zone.pegs[owner] === 0) delete zone.pegs[owner];
+    if (pegCount(zone, owner) >= majorityThreshold(zone.id)) throw new Error("cannot remove a majority peg");
+    const idx = zone.seats.indexOf(owner);
+    if (idx < 0) throw new Error("no such peg");
+    zone.seats[idx] = null;
   },
   protectMajority(state, ctx) {
     const zone = state.zones.find((z) => z.id === ctx.target.zoneId);

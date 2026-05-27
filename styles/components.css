@@ -6,9 +6,21 @@
 .swatch { width: 14px; height: 14px; border: 2px solid var(--ink); border-radius: 50%; display: inline-block; }
 
 /* Masthead */
-.masthead { text-align: center; border-bottom: 4px double var(--ink); padding-bottom: 8px; margin-bottom: 14px; }
+.masthead { position: relative; text-align: center; border-bottom: 4px double var(--ink); padding-bottom: 8px; margin-bottom: 14px; }
 .masthead h1 { font-size: 44px; letter-spacing: 1px; margin: 0; }
 .masthead .label { display: block; margin-top: 2px; }
+
+/* Settings gear + menu (top-right of the masthead) */
+.settings { position: absolute; top: 0; right: 0; }
+.gear-btn { font-size: 20px; line-height: 1; background: var(--paper); border: 2px solid var(--ink);
+  border-radius: 4px; padding: 4px 9px; }
+.gear-btn:hover { background: var(--ink); color: var(--paper); }
+.settings-menu { position: absolute; right: 0; top: 42px; z-index: 30; min-width: 190px; text-align: left;
+  background: var(--paper); border: 2px solid var(--ink); border-radius: 4px; padding: 10px;
+  display: flex; flex-direction: column; gap: 6px; box-shadow: 0 8px 22px rgba(0,0,0,.20); }
+.settings-menu .label { margin-bottom: 2px; }
+.settings-row { width: 100%; text-align: left; }
+.resume-panel { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 
 /* Layout: map + side panel */
 .turn-grid { display: grid; grid-template-columns: 1fr 340px; gap: 22px; align-items: start; }
@@ -21,12 +33,21 @@
 .coast { fill: #dde9e0; stroke: #b9cbbd; stroke-width: 2; stroke-dasharray: 3 5; }
 .zone-shape { fill: var(--paper); stroke: var(--ink); stroke-width: 2.5; transition: fill .18s ease; }
 .zone-shape.locked { fill: var(--paper-2); }
-.zone-shape.selectable { cursor: pointer; }
-.zone-shape.selectable:hover { fill: #fff3d6; }
+.zone-shape.placeable { fill: #fff3d6; }
 .zone-name { font: 800 14px var(--serif); fill: var(--ink); pointer-events: none; }
 .zone-sub { font: 600 11px var(--sans); fill: var(--muted); pointer-events: none; }
 .seat { fill: #fffdf8; stroke: var(--ink); stroke-width: 1.5; opacity: .8; }
 .seat.filled { opacity: 1; stroke-width: 1.5; }
+/* an empty circle you can drop a bought voter onto */
+.seat.placeable { cursor: pointer; stroke: var(--clout); stroke-width: 2.5; opacity: 1;
+  fill: #fff6df; animation: seatPulse 1.1s ease-in-out infinite; }
+.seat.placeable:hover { fill: var(--clout); }
+@keyframes seatPulse { 0%,100% { stroke-opacity: 1; } 50% { stroke-opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .seat.placeable { animation: none; } }
+/* per-player vote tally pips under each region label */
+.vote-pip { stroke: rgba(0,0,0,.35); stroke-width: 1.5; }
+.vote-pip-n { font: 800 9px var(--sans); fill: #fff; pointer-events: none; paint-order: stroke;
+  stroke: rgba(0,0,0,.45); stroke-width: .6px; }
 .vol-seat { fill: #fff; stroke: #7a1f17; stroke-width: 2.5; stroke-dasharray: 3 2; }
 .vol-seat.filled { stroke: var(--ink); stroke-dasharray: none; }
 .vol-seat.selectable { cursor: pointer; }
@@ -83,6 +104,7 @@
 /* Headline banner */
 .headline { border: 2px solid var(--ink); border-left: 8px solid var(--media); background: #eef4fb; padding: 10px 14px; border-radius: 3px; margin-bottom: 14px; }
 .map-legend { font-size: 12px; margin-top: 8px; text-align: center; }
+.place-prompt { font-weight: 700; color: var(--clout); }
 
 /* Dilemma card flip + reward token fly */
 .dilemma-card { transition: background .45s ease, color .45s ease, transform .3s ease; }

@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createGame } from "../src/engine/state.js";
 import { beginTurn, answerDilemma, buyConspiracy, playConspiracy } from "../src/engine/actions.js";
+import { pegCount } from "../src/engine/rules.js";
 
 const P = [{ name: "A", color: "#1" }, { name: "B", color: "#2" }];
 function ready(seed = 1) { return answerDilemma(beginTurn(createGame({ players: P, seed })), { answerIndex: 0 }); }
@@ -50,9 +51,10 @@ test("playConspiracy stealResource moves resources from target to actor", () => 
 test("playConspiracy removePeg removes a non-majority peg from a zone", () => {
   let g = ready();
   g.players[0].hand = ["c005"];           // Booth Capture
-  g.zones.find((z) => z.id === "z4").pegs = { 1: 2 };
+  const z4 = g.zones.find((z) => z.id === "z4");
+  z4.seats = z4.seats.map(() => null); z4.seats[0] = 1; z4.seats[1] = 1;
   g = playConspiracy(g, { cardId: "c005", target: { zoneId: "z4", pegOwner: 1 } });
-  assert.equal((g.zones.find((z) => z.id === "z4").pegs[1] || 0), 1);
+  assert.equal(pegCount(g.zones.find((z) => z.id === "z4"), 1), 1);
 });
 
 test("playConspiracy throws if card not in hand", () => {

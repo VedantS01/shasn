@@ -4,18 +4,24 @@ export const zoneCapacity = (zoneId) => ZONE_BY_ID[zoneId].capacity;
 export const majorityThreshold = (zoneId) => (ZONE_BY_ID[zoneId].capacity + 1) / 2;
 export const neighborsOf = (zoneId) => ZONE_BY_ID[zoneId].neighbors;
 
-export const pegCount = (zone, playerId) => zone.pegs[playerId] || 0;
-export const totalPegs = (zone) => Object.values(zone.pegs).reduce((s, n) => s + n, 0);
-// normal seats fill to capacity; the volatile seat is an extra slot, ignored for "full"
-export const isZoneFull = (zone) => totalPegs(zone) >= zoneCapacity(zone.id);
+// zone.seats is an array (length = capacity) of playerId | null — one entry per
+// vote circle. The volatile seat (zone.volatileOwner) is an extra slot on top.
+export const pegCount = (zone, playerId) => zone.seats.filter((s) => s === playerId).length;
+export const totalPegs = (zone) => zone.seats.filter((s) => s !== null).length;
+export function emptySeats(zone) {
+  const out = [];
+  zone.seats.forEach((s, i) => { if (s === null) out.push(i); });
+  return out;
+}
+export const isZoneFull = (zone) => emptySeats(zone).length === 0;
 
-// effective control = normal pegs + the volatile peg (if held), used for majority & votes
+// effective control = circles held + the volatile seat (if held), used for majority & votes
 export const effectivePegs = (zone, playerId) =>
   pegCount(zone, playerId) + (zone.volatileOwner === playerId ? 1 : 0);
 
 export function majorityHolder(zone) {
   const need = majorityThreshold(zone.id);
-  const owners = new Set(Object.keys(zone.pegs).map(Number));
+  const owners = new Set(zone.seats.filter((s) => s !== null));
   if (zone.volatileOwner !== null) owners.add(zone.volatileOwner);
   for (const pid of owners) if (effectivePegs(zone, pid) >= need) return pid;
   return null;
@@ -30,10 +36,7 @@ export function canReachZone(state, playerId, zoneId) {
   if (!zone || zone.lockedBy !== null) return false;
   if (!hasPresence(state, playerId)) return true;
   if (effectivePegs(zone, playerId) > 0) return true;
-  return neighborsOf(zoneId).some((nId) => {
-    const n = state.zones.find((z) => z.id === nId);
-    return effectivePegs(n, playerId) > 0;
-  });
+  return neighborsOf(zoneId).some((nId) => effectivePegs(state.zones.find((z) => z.id === nId), playerId) > 0);
 }
 
 export function canPlaceInZone(state, playerId, zoneId) {

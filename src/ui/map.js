@@ -59,15 +59,20 @@ function seatLayout(zone) {
   return { seats, volatile: polar(mid, R_OUTER - 28) };
 }
 
-// expand pegs into an ordered list of owner ids to fill seats
-function occupants(zoneState) {
-  const out = [];
-  for (const [pid, n] of Object.entries(zoneState.pegs)) for (let k = 0; k < n; k++) out.push(Number(pid));
-  return out;
+// Per-owner vote tally for a zone (circles + the volatile seat), used for the
+// "who holds how many" sub-label under each region.
+function tallyByOwner(state, zs) {
+  const counts = new Map();
+  for (const s of zs.seats) if (s !== null) counts.set(s, (counts.get(s) || 0) + 1);
+  if (zs.volatileOwner !== null) counts.set(zs.volatileOwner, (counts.get(zs.volatileOwner) || 0) + 1);
+  return counts;
 }
 
 export function renderMap(state, opts = {}) {
-  const { selectableZoneIds = [], onZoneClick = () => {}, onVolatileClick = null, volatileZoneIds = [] } = opts;
+  const {
+    placeableZoneIds = [], onSeatClick = () => {},
+    onVolatileClick = null, volatileZoneIds = []
+  } = opts;
   const svg = el("svg", { viewBox: "0 0 760 680", class: "map", role: "group", "aria-label": "Constituency map" });
 
   // soft coastline backdrop
@@ -75,7 +80,7 @@ export function renderMap(state, opts = {}) {
 
   for (const z of ZONES) {
     const zs = state.zones.find((s) => s.id === z.id);
-    const selectable = selectableZoneIds.includes(z.id);
+    const placeable = placeableZoneIds.includes(z.id);
     const locked = zs.lockedBy !== null;
     const lockColor = locked ? state.players[zs.lockedBy].color : null;
 
@@ -83,24 +88,39 @@ export function renderMap(state, opts = {}) {
     const shape = z.ring === "center"
       ? el("circle", { cx: C.x, cy: C.y, r: R_INNER - 4 })
       : el("path", { d: sectorPath(z.ring, R_INNER + 6, R_OUTER) });
-    shape.setAttribute("class", `zone-shape${locked ? " locked" : ""}${selectable ? " selectable" : ""}`);
+    shape.setAttribute("class", `zone-shape${locked ? " locked" : ""}${placeable ? " placeable" : ""}`);
     if (locked) shape.setAttribute("style", `fill:${lockColor}22`);
-    if (selectable) shape.addEventListener("click", () => onZoneClick(z.id));
     svg.appendChild(shape);
 
-    // label outside the ring (or top of centre)
+    // label outside the ring (or top of centre): name, fill count, and per-player votes
     const labelPos = z.ring === "center" ? { x: C.x, y: C.y - 96 } : polar(z.ring, R_OUTER + 30);
     svg.appendChild(el("text", { x: labelPos.x, y: labelPos.y, class: "zone-name", "text-anchor": "middle" }, z.name));
     svg.appendChild(el("text", { x: labelPos.x, y: labelPos.y + 15, class: "zone-sub", "text-anchor": "middle" },
-      `${totalPegs(zs)}/${zoneCapacity(z.id)}${locked ? " ★" : ""}`));
+      `${totalPegs(zs)}/${zoneCapacity(z.id)}${locked ? " ★ " + state.players[zs.lockedBy].name : ""}`));
+    // colored vote-count pips: one labelled dot per player holding seats here
+    const tally = tallyByOwner(state, zs);
+    if (tally.size) {
+      const entries = [...tally.entries()];
+      const startX = labelPos.x - (entries.length - 1) * 11;
+      entries.forEach(([pid, n], k) => {
+        const cx = startX + k * 22, cy = labelPos.y + 30;
+        svg.appendChild(el("circle", { cx, cy, r: 7, class: "vote-pip", fill: state.players[pid].color }));
+        svg.appendChild(el("text", { x: cx, y: cy + 3.5, class: "vote-pip-n", "text-anchor": "middle" }, String(n)));
+      });
+    }
 
-    // seats
+    // seats — each circle is one vote slot; empty ones become clickable while placing
     const { seats, volatile } = seatLayout(z);
-    const occ = occupants(zs);
     seats.forEach((pt, i) => {
-      const owner = occ[i];
-      const seat = el("circle", { cx: pt.x.toFixed(1), cy: pt.y.toFixed(1), r: SEAT_R, class: "seat" });
-      if (owner != null) { seat.setAttribute("fill", state.players[owner].color); seat.setAttribute("class", "seat filled"); }
+      const owner = zs.seats[i];
+      const filled = owner != null;
+      const open = !filled && placeable;
+      const seat = el("circle", {
+        cx: pt.x.toFixed(1), cy: pt.y.toFixed(1), r: SEAT_R,
+        class: `seat${filled ? " filled" : ""}${open ? " placeable" : ""}`,
+        fill: filled ? state.players[owner].color : null
+      });
+      if (open) seat.addEventListener("click", (e) => { if (e && e.stopPropagation) e.stopPropagation(); onSeatClick(z.id, i); });
       svg.appendChild(seat);
     });
 

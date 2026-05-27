@@ -62,7 +62,8 @@ test("a windfall/extra-dilemma headline applies its effect", () => {
 test("the volatile peg counts toward majority and locks the zone", () => {
   let g = actions();
   Object.assign(g.players[0].resources, { clout: 2, media: 2 });
-  g.zones.find((z) => z.id === "z6").pegs = { 0: 2 };    // z6 cap5, threshold 3
+  const pre = g.zones.find((z) => z.id === "z6");
+  pre.seats = pre.seats.map(() => null); pre.seats[0] = 0; pre.seats[1] = 0;   // z6 cap5, threshold 3
   g.decks.headlineDraw = ["h07"];
   g = occupyVolatile(g, { zoneId: "z6" });
   const z6 = g.zones.find((z) => z.id === "z6");
