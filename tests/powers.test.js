@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createGame } from "../src/engine/state.js";
 import { passiveFor, level, POWERS } from "../src/engine/powers.js";
-import { openMarket, landGrab } from "../src/engine/actions.js";
+import { openMarket, landGrab, targetedMarketing } from "../src/engine/actions.js";
 
 const P = [{ name: "A", color: "#1" }, { name: "B", color: "#2" }];
 
@@ -116,4 +116,48 @@ test("landGrab: replaceOwn count must equal own-evicted count", () => {
   const nv = [...Array(c.seats.length).keys()].find((i) => !c.volatileSeats.includes(i));
   c.seats[nv] = 0;
   assert.throws(() => landGrab(g, { targets: [{ zoneId: "central", seatIndex: nv }] }), /replaceOwn/);
+});
+
+test("targetedMarketing: pay 2 media + 3 any, convert 2 opponent voters in same zone", () => {
+  let g = createGame({ players: P, seed: 1 });
+  g.turn = { ...g.turn, phase: "actions", current: 0 };
+  g.players[0].piles.showman = 6;
+  g.players[0].resources = { funds: 3, clout: 0, media: 2, trust: 0 };
+  const c = g.zones.find((z) => z.id === "central");
+  const slots = [...Array(c.seats.length).keys()].filter((i) => !c.volatileSeats.includes(i));
+  c.seats[slots[0]] = 1; c.seats[slots[1]] = 1;
+  const next = targetedMarketing(g, {
+    zoneId: "central", opponentId: 1, seatIndices: [slots[0], slots[1]],
+    pay: { media: 2, funds: 3 }
+  });
+  assert.equal(next.zones.find((z) => z.id === "central").seats[slots[0]], 0);
+  assert.equal(next.zones.find((z) => z.id === "central").seats[slots[1]], 0);
+  assert.equal(next.players[0].resources.media, 0);
+  assert.equal(next.players[0].resources.funds, 0);
+});
+
+test("targetedMarketing: rejects volatile seat targets", () => {
+  let g = createGame({ players: P, seed: 1 });
+  g.turn = { ...g.turn, phase: "actions", current: 0 };
+  g.players[0].piles.showman = 6;
+  g.players[0].resources = { media: 2, funds: 3, clout: 0, trust: 0 };
+  const c = g.zones.find((z) => z.id === "central");
+  const vol = c.volatileSeats[0];
+  const nonVol = [...Array(c.seats.length).keys()].find((i) => !c.volatileSeats.includes(i));
+  c.seats[vol] = 1; c.seats[nonVol] = 1;
+  assert.throws(() => targetedMarketing(g, {
+    zoneId: "central", opponentId: 1, seatIndices: [vol, nonVol],
+    pay: { media: 2, funds: 3 }
+  }), /volatile/i);
+});
+
+test("targetedMarketing: rejects without Showman L6 or insufficient media", () => {
+  let g = createGame({ players: P, seed: 1 });
+  g.turn = { ...g.turn, phase: "actions", current: 0 };
+  g.players[0].piles.showman = 5;
+  g.players[0].resources = { media: 2, funds: 3, clout: 0, trust: 0 };
+  assert.throws(() => targetedMarketing(g, {
+    zoneId: "central", opponentId: 1, seatIndices: [0, 1],
+    pay: { media: 2, funds: 3 }
+  }), /L6|requires/i);
 });

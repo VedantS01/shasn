@@ -552,6 +552,44 @@ export function landGrab(state, { targets, replaceOwn = [] }) {
   return s;
 }
 
+// --- Showman L6: Targeted Marketing --------------------------------------------
+// Spend 2 Media + any 3 resources to convert 2 of an opponent's voters in one
+// zone. Volatile seats are immune.
+export function targetedMarketing(state, { zoneId, opponentId, seatIndices, pay }) {
+  if (state.turn.phase !== "actions") throw new Error("powers only in actions phase");
+  const s = clone(state);
+  const p = s.players[s.turn.current];
+  if ((p.piles.showman || 0) < 6) throw new Error("requires Showman L6");
+  if (p.usedThisTurn.targetedMarketing) throw new Error("Targeted Marketing already used this turn");
+  if (!Array.isArray(seatIndices) || seatIndices.length !== 2)
+    throw new Error("must target exactly 2 seats");
+  if (opponentId === p.id) throw new Error("must target an opponent");
+  if ((pay.media || 0) < 2) throw new Error("must spend 2 media");
+  const totalPay = Object.values(pay).reduce((sum, n) => sum + n, 0);
+  if (totalPay < 5) throw new Error("must spend 2 media + 3 any (5 total)");
+  if (!Object.entries(pay).every(([r, n]) => (p.resources[r] || 0) >= n))
+    throw new Error("cannot afford cost");
+  for (const [r, n] of Object.entries(pay)) p.resources[r] -= n;
+
+  const z = s.zones.find((x) => x.id === zoneId);
+  if (!z) throw new Error("no such zone");
+  for (const idx of seatIndices) {
+    if (z.volatileSeats.includes(idx)) throw new Error("voter on volatile seat is immune");
+    if (z.seats[idx] !== opponentId) throw new Error("target not opponent's voter");
+    z.seats[idx] = p.id;
+    // Note: if a flipped seat is converted, the flip stays — it now counts for the new owner.
+  }
+  // Opponent might lose their majority if they drop below threshold.
+  if (z.lockedBy === opponentId && voteCount(z, opponentId) < majorityThreshold(z.id)) {
+    z.flippedSeats = z.flippedSeats.map(() => false);
+    z.lockedBy = null;
+  }
+  flipMajorityIfReached(s, z, p.id);
+  p.usedThisTurn.targetedMarketing = true;
+  s.log.push(`${p.name} Targeted Marketing in ${zoneId}`);
+  return s;
+}
+
 // --- Capitalist L4: Open Market ------------------------------------------------
 // Pay 1 resource, take any 2 in return (once per turn).
 export function openMarket(state, { give, take }) {
