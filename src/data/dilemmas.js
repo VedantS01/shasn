@@ -1,5 +1,5 @@
 // Original dilemmas. answers[i].ideology selects the pile; payout is dominant
-// in that ideology's resource (capitalist=funds, supremo=clout, showstopper=media, idealist=trust).
+// in that ideology's resource (capitalist=funds, supremo=clout, showman=media, idealist=trust).
 // All content is original; no copyrighted SHASN card text is reproduced.
 export const DILEMMAS = [
   {
@@ -22,7 +22,7 @@ export const DILEMMAS = [
     id: "d003",
     question: "A scandal could sink a rival. Do you leak it to a friendly broadcaster?",
     answers: [
-      { label: "Yes — control the headline", ideology: "showstopper", payout: { media: 2, clout: 1 } },
+      { label: "Yes — control the headline", ideology: "showman", payout: { media: 2, clout: 1 } },
       { label: "No — keep your hands clean", ideology: "idealist", payout: { trust: 2, media: 1 } }
     ]
   },
@@ -39,14 +39,14 @@ export const DILEMMAS = [
     question: "Protesters camp outside parliament. Do you send in the police at dawn?",
     answers: [
       { label: "Yes — order above all", ideology: "supremo", payout: { clout: 3 } },
-      { label: "No — let them be heard on camera", ideology: "showstopper", payout: { media: 2, trust: 1 } }
+      { label: "No — let them be heard on camera", ideology: "showman", payout: { media: 2, trust: 1 } }
     ]
   },
   {
     id: "d006",
     question: "A viral rumor flatters your image but isn't true. Do you let it spread?",
     answers: [
-      { label: "Yes — a useful myth is still useful", ideology: "showstopper", payout: { media: 3 } },
+      { label: "Yes — a useful myth is still useful", ideology: "showman", payout: { media: 3 } },
       { label: "No — correct the record publicly", ideology: "idealist", payout: { trust: 2, media: 1 } }
     ]
   },
@@ -62,7 +62,7 @@ export const DILEMMAS = [
     id: "d008",
     question: "Famous artists endorse you if you fund the festival. Do you bankroll it?",
     answers: [
-      { label: "Yes — spectacle wins hearts", ideology: "showstopper", payout: { media: 2, funds: 1 } },
+      { label: "Yes — spectacle wins hearts", ideology: "showman", payout: { media: 2, funds: 1 } },
       { label: "No — spend it on clinics instead", ideology: "idealist", payout: { trust: 3 } }
     ]
   },
@@ -86,7 +86,7 @@ export const DILEMMAS = [
     id: "d011",
     question: "A talk-show host will run your slogans nightly for a price. Do you pay?",
     answers: [
-      { label: "Yes — repetition is persuasion", ideology: "showstopper", payout: { media: 3 } },
+      { label: "Yes — repetition is persuasion", ideology: "showman", payout: { media: 3 } },
       { label: "No — buy ad space the honest way", ideology: "capitalist", payout: { funds: 2, media: 1 } }
     ]
   },
@@ -111,7 +111,7 @@ export const DILEMMAS = [
     question: "A whistleblower offers documents proving a ministry is corrupt. Do you publish?",
     answers: [
       { label: "Yes — sunlight is the best cure", ideology: "idealist", payout: { trust: 3 } },
-      { label: "No — but stage a dramatic reveal later", ideology: "showstopper", payout: { media: 2, clout: 1 } }
+      { label: "No — but stage a dramatic reveal later", ideology: "showman", payout: { media: 2, clout: 1 } }
     ]
   },
   {
@@ -134,7 +134,7 @@ export const DILEMMAS = [
     id: "d017",
     question: "A studio will make a flattering biopic of you. Do you greenlight it?",
     answers: [
-      { label: "Yes — legends win elections", ideology: "showstopper", payout: { media: 3 } },
+      { label: "Yes — legends win elections", ideology: "showman", payout: { media: 3 } },
       { label: "No — fund a literacy drive instead", ideology: "idealist", payout: { trust: 2, media: 1 } }
     ]
   },
@@ -158,7 +158,7 @@ export const DILEMMAS = [
     id: "d020",
     question: "A celebrity offers to host your rally if you back their pet cause. Do you agree?",
     answers: [
-      { label: "Yes — borrow their spotlight", ideology: "showstopper", payout: { media: 2, trust: 1 } },
+      { label: "Yes — borrow their spotlight", ideology: "showman", payout: { media: 2, trust: 1 } },
       { label: "No — keep the message yours", ideology: "supremo", payout: { clout: 2, media: 1 } }
     ]
   },
@@ -183,7 +183,7 @@ export const DILEMMAS = [
     question: "A border skirmish gives you a chance to rally the flag. Do you escalate the rhetoric?",
     answers: [
       { label: "Yes — nothing unites like a foe", ideology: "supremo", payout: { clout: 2, media: 1 } },
-      { label: "No — broadcast calls for calm", ideology: "showstopper", payout: { media: 2, trust: 1 } }
+      { label: "No — broadcast calls for calm", ideology: "showman", payout: { media: 2, trust: 1 } }
     ]
   },
   {
@@ -198,7 +198,7 @@ export const DILEMMAS = [
     id: "d025",
     question: "A rival's gaffe is trending. Do you flood the feeds with edited clips?",
     answers: [
-      { label: "Yes — strike while it's hot", ideology: "showstopper", payout: { media: 3 } },
+      { label: "Yes — strike while it's hot", ideology: "showman", payout: { media: 3 } },
       { label: "No — win on substance", ideology: "idealist", payout: { trust: 2, media: 1 } }
     ]
   },
@@ -223,7 +223,7 @@ export const DILEMMAS = [
     question: "A documentary exposes your ally's crimes. Do you let the state broadcaster air it?",
     answers: [
       { label: "Yes — truth over loyalty", ideology: "idealist", payout: { trust: 2, media: 1 } },
-      { label: "No — bury it, spin a distraction", ideology: "showstopper", payout: { media: 2, clout: 1 } }
+      { label: "No — bury it, spin a distraction", ideology: "showman", payout: { media: 2, clout: 1 } }
     ]
   },
   {
@@ -246,7 +246,7 @@ export const DILEMMAS = [
     id: "d031",
     question: "A populist anthem about you tops the charts. Do you adopt it as your campaign song?",
     answers: [
-      { label: "Yes — ride the wave", ideology: "showstopper", payout: { media: 2, funds: 1 } },
+      { label: "Yes — ride the wave", ideology: "showman", payout: { media: 2, funds: 1 } },
       { label: "No — gravitas over jingles", ideology: "supremo", payout: { clout: 2, media: 1 } }
     ]
   },
@@ -263,7 +263,7 @@ export const DILEMMAS = [
     question: "A union threatens a transit strike before elections. Do you concede their demands?",
     answers: [
       { label: "Yes — workers keep the city alive", ideology: "idealist", payout: { trust: 2, clout: 1 } },
-      { label: "No — break the strike on live TV", ideology: "showstopper", payout: { media: 2, clout: 1 } }
+      { label: "No — break the strike on live TV", ideology: "showman", payout: { media: 2, clout: 1 } }
     ]
   },
   {
@@ -278,7 +278,7 @@ export const DILEMMAS = [
     id: "d035",
     question: "A viral charity stunt would boost you but spotlight a real crisis. Do you stage it?",
     answers: [
-      { label: "Yes — attention is aid", ideology: "showstopper", payout: { media: 2, trust: 1 } },
+      { label: "Yes — attention is aid", ideology: "showman", payout: { media: 2, trust: 1 } },
       { label: "No — donate quietly, no cameras", ideology: "idealist", payout: { trust: 2, funds: 1 } }
     ]
   },
@@ -318,7 +318,7 @@ export const DILEMMAS = [
     id: "d040",
     question: "A patriotic blockbuster needs army help to film. Do you lend troops as extras?",
     answers: [
-      { label: "Yes — pride sells tickets and votes", ideology: "showstopper", payout: { media: 2, clout: 1 } },
+      { label: "Yes — pride sells tickets and votes", ideology: "showman", payout: { media: 2, clout: 1 } },
       { label: "No — soldiers aren't props", ideology: "idealist", payout: { trust: 2, media: 1 } }
     ]
   },
@@ -358,7 +358,7 @@ export const DILEMMAS = [
     id: "d045",
     question: "A reality show wants you as a guest judge a week before the vote. Do you appear?",
     answers: [
-      { label: "Yes — meet voters where they watch", ideology: "showstopper", payout: { media: 3 } },
+      { label: "Yes — meet voters where they watch", ideology: "showman", payout: { media: 3 } },
       { label: "No — the office demands dignity", ideology: "supremo", payout: { clout: 2, media: 1 } }
     ]
   },
@@ -367,7 +367,7 @@ export const DILEMMAS = [
     question: "A mine collapse traps workers; a rescue risks more lives. Do you order the costly dig?",
     answers: [
       { label: "Yes — no one is left behind", ideology: "idealist", payout: { trust: 3 } },
-      { label: "No — broadcast the vigil instead", ideology: "showstopper", payout: { media: 2, trust: 1 } }
+      { label: "No — broadcast the vigil instead", ideology: "showman", payout: { media: 2, trust: 1 } }
     ]
   },
   {
@@ -375,7 +375,7 @@ export const DILEMMAS = [
     question: "A sin tax on sugar would fund clinics but anger the poor. Do you levy it?",
     answers: [
       { label: "Yes — health pays for itself", ideology: "idealist", payout: { trust: 2, funds: 1 } },
-      { label: "No — don't tax the workingman's treat", ideology: "showstopper", payout: { media: 2, clout: 1 } }
+      { label: "No — don't tax the workingman's treat", ideology: "showman", payout: { media: 2, clout: 1 } }
     ]
   },
   {
@@ -406,7 +406,7 @@ export const DILEMMAS = [
     id: "d051",
     question: "A blackout hits during your big speech. Do you blame saboteurs on every channel?",
     answers: [
-      { label: "Yes — turn a fault into a villain", ideology: "showstopper", payout: { media: 2, clout: 1 } },
+      { label: "Yes — turn a fault into a villain", ideology: "showman", payout: { media: 2, clout: 1 } },
       { label: "No — admit the grid is old and fix it", ideology: "idealist", payout: { trust: 2, funds: 1 } }
     ]
   },
@@ -423,7 +423,7 @@ export const DILEMMAS = [
     question: "A free press council wants independence from your office. Do you grant it?",
     answers: [
       { label: "Yes — a watchdog needs no leash", ideology: "idealist", payout: { trust: 3 } },
-      { label: "No — keep the message disciplined", ideology: "showstopper", payout: { media: 2, clout: 1 } }
+      { label: "No — keep the message disciplined", ideology: "showman", payout: { media: 2, clout: 1 } }
     ]
   },
   {
@@ -446,7 +446,7 @@ export const DILEMMAS = [
     id: "d056",
     question: "A meme of you dancing goes viral. Do you lean in and post a sequel?",
     answers: [
-      { label: "Yes — be the joke and own it", ideology: "showstopper", payout: { media: 3 } },
+      { label: "Yes — be the joke and own it", ideology: "showman", payout: { media: 3 } },
       { label: "No — protect a serious image", ideology: "supremo", payout: { clout: 2, media: 1 } }
     ]
   },
@@ -462,7 +462,7 @@ export const DILEMMAS = [
     id: "d058",
     question: "A spy ring is uncovered in a rival's camp. Do you parade the arrests on live TV?",
     answers: [
-      { label: "Yes — make an example of traitors", ideology: "showstopper", payout: { media: 2, clout: 1 } },
+      { label: "Yes — make an example of traitors", ideology: "showman", payout: { media: 2, clout: 1 } },
       { label: "No — try them quietly and fairly", ideology: "idealist", payout: { trust: 2, clout: 1 } }
     ]
   },
@@ -478,7 +478,7 @@ export const DILEMMAS = [
     id: "d060",
     question: "A landmark trial could be opened to cameras. Do you televise justice?",
     answers: [
-      { label: "Yes — let the people watch the law", ideology: "showstopper", payout: { media: 2, trust: 1 } },
+      { label: "Yes — let the people watch the law", ideology: "showman", payout: { media: 2, trust: 1 } },
       { label: "No — courts aren't theaters", ideology: "idealist", payout: { trust: 2, clout: 1 } }
     ]
   }
