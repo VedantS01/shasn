@@ -112,6 +112,16 @@ test("map: each zone declares volatile seat indices within capacity range", () =
 
 import { VOTE_BANK, VOTE_BANK_BY_ID } from "../src/data/voteBank.js";
 
+test("headlines: 20 unique cards across the rulebook effect families", () => {
+  assert.equal(HEADLINES.length, 20);
+  assert.equal(new Set(HEADLINES.map((h) => h.id)).size, 20);
+  for (const h of HEADLINES) {
+    assert.ok(h.name && h.text, `${h.id} has name+text`);
+    assert.ok(["grant","lose","windfall","extraDilemma"].includes(h.effect.type),
+      `${h.id} effect type valid`);
+  }
+});
+
 test("voteBank: 60 unique cards, value distribution 20/25/15, marked resource is a cost slot", () => {
   assert.equal(VOTE_BANK.length, 60);
   assert.equal(new Set(VOTE_BANK.map((c) => c.id)).size, 60, "ids unique");

@@ -13,7 +13,15 @@ export const HEADLINES = [
   { id: "h09", name: "Leaked Tape",            text: "A hot mic burns your message.",       effect: { type: "lose",  params: { resource: "media", amount: 2 } } },
   { id: "h10", name: "Town Hall Triumph",      text: "You win the room, and the cameras.",  effect: { type: "grant", params: { resource: "trust", amount: 2 } } },
   { id: "h11", name: "Broken Promise",         text: "An old vow comes back to bite.",      effect: { type: "lose",  params: { resource: "trust", amount: 2 } } },
-  { id: "h12", name: "October Surprise",       text: "Everything breaks your way at once.", effect: { type: "windfall", params: {} } }
+  { id: "h12", name: "October Surprise",       text: "Everything breaks your way at once.", effect: { type: "windfall", params: {} } },
+  { id: "h13", name: "Foreign Endorsement",   text: "A neighbor backs your platform.",     effect: { type: "grant", params: { resource: "trust", amount: 2 } } },
+  { id: "h14", name: "Strike Wave",           text: "Workers walk out across the south.",  effect: { type: "lose",  params: { resource: "clout", amount: 2 } } },
+  { id: "h15", name: "Viral Speech",          text: "A clip catches fire.",                effect: { type: "grant", params: { resource: "media", amount: 2 } } },
+  { id: "h16", name: "Court Setback",         text: "A ruling stalls your agenda.",        effect: { type: "lose",  params: { resource: "trust", amount: 2 } } },
+  { id: "h17", name: "Surprise Coalition",    text: "An ally turns the tide.",             effect: { type: "windfall", params: {} } },
+  { id: "h18", name: "Border Incident",       text: "An overnight crisis dominates news.", effect: { type: "extraDilemma", params: {} } },
+  { id: "h19", name: "Whistleblower",         text: "An insider leaks the playbook.",      effect: { type: "lose",  params: { resource: "funds", amount: 2 } } },
+  { id: "h20", name: "Festival Spotlight",    text: "The cameras find you everywhere.",    effect: { type: "grant", params: { resource: "clout", amount: 2 } } }
 ];
 
 export const HEADLINE_BY_ID = Object.fromEntries(HEADLINES.map((h) => [h.id, h]));
