@@ -590,6 +590,64 @@ export function targetedMarketing(state, { zoneId, opponentId, seatIndices, pay 
   return s;
 }
 
+// --- Supremo L4: Donations -----------------------------------------------------
+// Snatch 1 or 2 resources (total) from other players for free, once per turn.
+export function donations(state, { takes }) {
+  if (state.turn.phase !== "actions") throw new Error("powers only in actions phase");
+  const s = clone(state);
+  const p = s.players[s.turn.current];
+  if ((p.piles.supremo || 0) < 4) throw new Error("requires Supremo L4");
+  if (p.usedThisTurn.donations) throw new Error("Donations already used");
+  const totalTake = takes.reduce((sum, t) => sum + t.count, 0);
+  if (totalTake === 0 || totalTake > 2) throw new Error("snatch 1 or 2 total");
+  for (const t of takes) {
+    const victim = s.players[t.from];
+    if (!victim || victim.id === p.id) throw new Error("invalid target");
+    if (!RESOURCES.includes(t.resource)) throw new Error("invalid resource");
+    if ((victim.resources[t.resource] || 0) < t.count) throw new Error("victim lacks resource");
+    victim.resources[t.resource] -= t.count;
+    p.resources[t.resource] += t.count;
+  }
+  p.usedThisTurn.donations = true;
+  s.log.push(`${p.name} Donations snatched ${totalTake} resource(s)`);
+  return s;
+}
+
+// --- Supremo L6: Civil Disobedience --------------------------------------------
+// Pay 1 resource per voter; discard up to 2 opponent non-volatile voters.
+export function civilDisobedience(state, { targets, pay }) {
+  if (state.turn.phase !== "actions") throw new Error("powers only in actions phase");
+  const s = clone(state);
+  const p = s.players[s.turn.current];
+  if ((p.piles.supremo || 0) < 6) throw new Error("requires Supremo L6");
+  if (p.usedThisTurn.civilDisobedience) throw new Error("Civil Disobedience already used");
+  if (!Array.isArray(targets) || targets.length === 0 || targets.length > 2)
+    throw new Error("discard 1 or 2 voters");
+  const totalPay = Object.values(pay).reduce((sum, n) => sum + n, 0);
+  if (totalPay !== targets.length) throw new Error("must pay 1 resource per voter");
+  if (!Object.entries(pay).every(([r, n]) => (p.resources[r] || 0) >= n))
+    throw new Error("cannot afford");
+  for (const [r, n] of Object.entries(pay)) p.resources[r] -= n;
+  for (const t of targets) {
+    const z = s.zones.find((x) => x.id === t.zoneId);
+    if (!z) throw new Error("no such zone");
+    if (z.volatileSeats.includes(t.seatIndex)) throw new Error("voter on volatile seat immune");
+    const owner = z.seats[t.seatIndex];
+    if (owner == null || owner === p.id) throw new Error("must discard an opponent voter");
+    z.seats[t.seatIndex] = null;
+    if (z.flippedSeats[t.seatIndex]) {
+      z.flippedSeats[t.seatIndex] = false;
+      if (z.lockedBy === owner && voteCount(z, owner) < majorityThreshold(z.id)) {
+        z.flippedSeats = z.flippedSeats.map(() => false);
+        z.lockedBy = null;
+      }
+    }
+  }
+  p.usedThisTurn.civilDisobedience = true;
+  s.log.push(`${p.name} Civil Disobedience discarded ${targets.length} voter(s)`);
+  return s;
+}
+
 // --- Capitalist L4: Open Market ------------------------------------------------
 // Pay 1 resource, take any 2 in return (once per turn).
 export function openMarket(state, { give, take }) {

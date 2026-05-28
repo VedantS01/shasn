@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createGame } from "../src/engine/state.js";
 import { passiveFor, level, POWERS } from "../src/engine/powers.js";
-import { openMarket, landGrab, targetedMarketing } from "../src/engine/actions.js";
+import { openMarket, landGrab, targetedMarketing, donations, civilDisobedience } from "../src/engine/actions.js";
 
 const P = [{ name: "A", color: "#1" }, { name: "B", color: "#2" }];
 
@@ -160,4 +160,65 @@ test("targetedMarketing: rejects without Showman L6 or insufficient media", () =
     zoneId: "central", opponentId: 1, seatIndices: [0, 1],
     pay: { media: 2, funds: 3 }
   }), /L6|requires/i);
+});
+
+test("donations: snatch up to 2 resources from other players, free, once per turn", () => {
+  let g = createGame({ players: P, seed: 1 });
+  g.turn = { ...g.turn, phase: "actions", current: 0 };
+  g.players[0].piles.supremo = 4;
+  g.players[1].resources = { funds: 5, clout: 0, media: 0, trust: 0 };
+  const next = donations(g, { takes: [{ from: 1, resource: "funds", count: 2 }] });
+  assert.equal(next.players[1].resources.funds, 3);
+  assert.equal(next.players[0].resources.funds, 2);
+  assert.throws(() => donations(next, { takes: [{ from: 1, resource: "funds", count: 1 }] }), /already used/i);
+});
+
+test("donations: rejects without Supremo L4", () => {
+  let g = createGame({ players: P, seed: 1 });
+  g.turn = { ...g.turn, phase: "actions", current: 0 };
+  g.players[0].piles.supremo = 3;
+  g.players[1].resources.funds = 5;
+  assert.throws(() => donations(g, { takes: [{ from: 1, resource: "funds", count: 1 }] }), /L4|requires/i);
+});
+
+test("donations: cannot snatch more than 2 total", () => {
+  let g = createGame({ players: P, seed: 1 });
+  g.turn = { ...g.turn, phase: "actions", current: 0 };
+  g.players[0].piles.supremo = 4;
+  g.players[1].resources = { funds: 5, clout: 5, media: 0, trust: 0 };
+  assert.throws(() => donations(g, { takes: [{ from: 1, resource: "funds", count: 3 }] }), /1 or 2/);
+});
+
+test("civilDisobedience: pay 1 per voter; discard up to 2 opponent non-volatile voters", () => {
+  let g = createGame({ players: P, seed: 1 });
+  g.turn = { ...g.turn, phase: "actions", current: 0 };
+  g.players[0].piles.supremo = 6;
+  g.players[0].resources = { funds: 2, clout: 0, media: 0, trust: 0 };
+  const c = g.zones.find((z) => z.id === "central");
+  const slots = [...Array(c.seats.length).keys()].filter((i) => !c.volatileSeats.includes(i));
+  c.seats[slots[0]] = 1; c.seats[slots[1]] = 1;
+  const next = civilDisobedience(g, {
+    targets: [
+      { zoneId: "central", seatIndex: slots[0] },
+      { zoneId: "central", seatIndex: slots[1] }
+    ],
+    pay: { funds: 2 }
+  });
+  assert.equal(next.zones.find((z) => z.id === "central").seats[slots[0]], null);
+  assert.equal(next.zones.find((z) => z.id === "central").seats[slots[1]], null);
+  assert.equal(next.players[0].resources.funds, 0);
+});
+
+test("civilDisobedience: rejects volatile target", () => {
+  let g = createGame({ players: P, seed: 1 });
+  g.turn = { ...g.turn, phase: "actions", current: 0 };
+  g.players[0].piles.supremo = 6;
+  g.players[0].resources.funds = 1;
+  const c = g.zones.find((z) => z.id === "central");
+  const vol = c.volatileSeats[0];
+  c.seats[vol] = 1;
+  assert.throws(() => civilDisobedience(g, {
+    targets: [{ zoneId: "central", seatIndex: vol }],
+    pay: { funds: 1 }
+  }), /volatile/i);
 });
