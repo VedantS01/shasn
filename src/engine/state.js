@@ -1,11 +1,16 @@
 import { makeRng, shuffle } from "./rng.js";
-import { ZONES, ZONE_BY_ID } from "../data/map.js";
+import { ZONES } from "../data/map.js";
 import { DILEMMAS } from "../data/dilemmas.js";
 import { CONSPIRACIES } from "../data/conspiracies.js";
 import { HEADLINES } from "../data/headlines.js";
+import { VOTE_BANK } from "../data/voteBank.js";
 
 export function createGame({ players, seed = 1 }) {
   const rng = makeRng(seed);
+  const market = (() => {
+    const shuffled = shuffle(VOTE_BANK.map((c) => c.id), rng);
+    return { open: shuffled.slice(0, 3), deck: shuffled.slice(3), discard: [] };
+  })();
   return {
     seed,
     players: players.map((p, i) => ({
@@ -13,13 +18,20 @@ export function createGame({ players, seed = 1 }) {
       name: p.name,
       color: p.color,
       resources: { funds: 0, clout: 0, media: 0, trust: 0 },
-      piles: { capitalist: 0, supremo: 0, showstopper: 0, idealist: 0 },
+      piles: { capitalist: 0, supremo: 0, showman: 0, idealist: 0 },
       hand: [],
+      pendingPlacements: 0,
       usedThisTurn: {}
     })),
-    // seats: one entry per vote circle (playerId | null). volatileOwner is an extra,
-    // non-gerrymanderable seat per zone that triggers a Headline.
-    zones: ZONES.map((z) => ({ id: z.id, seats: new Array(ZONE_BY_ID[z.id].capacity).fill(null), lockedBy: null, volatileOwner: null })),
+    zones: ZONES.map((z) => ({
+      id: z.id,
+      seats: new Array(z.capacity).fill(null),
+      flippedSeats: new Array(z.capacity).fill(false),
+      volatileSeats: [...z.volatileSeats],
+      lockedBy: null,
+      coalition: null
+    })),
+    market,
     decks: {
       dilemmaDraw: shuffle(DILEMMAS.map((d) => d.id), rng),
       dilemmaDiscard: [],
@@ -28,10 +40,19 @@ export function createGame({ players, seed = 1 }) {
       headlineDraw: shuffle(HEADLINES.map((h) => h.id), rng),
       headlineDiscard: []
     },
-    // Game opens in a starting-resource draft: player i (1-indexed) drafts i tokens,
-    // in player order, mitigating the first player's placement advantage.
-    turn: { current: 0, phase: "draft", pendingDilemma: null, gerrymanders: 0, draftRemaining: 1, toPlace: 0 },
+    turn: {
+      current: 0,
+      phase: "draft",
+      pendingDilemma: null,
+      gerrymanderMoves: {},
+      draftRemaining: 1,
+      currentBuy: null,
+      pendingHeadlines: [],
+      pendingProposal: null,
+      betweenTurnsAt: null
+    },
     lastHeadline: null,
+    endGame: null,
     log: [],
     winner: null
   };
