@@ -292,6 +292,26 @@ export function playConspiracy(state, { cardId, target, actorId }) {
   return s;
 }
 
+// --- resource cap / discard -------------------------------------------------
+const RESOURCE_CAP = 12;
+const totalResources = (p) => RESOURCES.reduce((s, r) => s + (p.resources[r] || 0), 0);
+
+export function discardResources(state, { counts }) {
+  if (state.turn.phase !== "discard") throw new Error("discard only in discard phase");
+  const s = clone(state);
+  const p = s.players[s.turn.current];
+  for (const r of RESOURCES) {
+    const n = counts[r] || 0;
+    if (n < 0) throw new Error("negative discard");
+    if ((p.resources[r] || 0) < n) throw new Error("not enough " + r);
+    p.resources[r] -= n;
+  }
+  if (totalResources(p) > RESOURCE_CAP)
+    throw new Error("total still over cap; discard more");
+  s.turn.phase = p.pendingPlacements > 0 ? "placePending" : "actions";
+  return s;
+}
+
 // --- archetype active powers ------------------------------------------------
 export function usePower(state, { ideology, tier, params = {} }) {
   const s = clone(state);
