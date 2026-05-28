@@ -201,12 +201,13 @@ export function drawExtraDilemma(state) {
   return s;
 }
 
-// Showstopper T1 "Spin": swap the current dilemma for a fresh one, once per turn.
+// Showman T1 "Spin": swap the current dilemma for a fresh one, once per turn.
+// (Formerly "Showstopper" — ideology renamed to Showman in the faithful overhaul.)
 export function spinDilemma(state) {
   if (state.turn.phase !== "dilemma") throw new Error("spin only during the dilemma phase");
   const s = clone(state);
   const p = s.players[s.turn.current];
-  if (tierOf(p.piles.showstopper) < 1) throw new Error("requires Showstopper tier 1");
+  if (tierOf(p.piles.showman) < 1) throw new Error("requires Showstopper tier 1");
   if (p.usedThisTurn["showstopper:t1"]) throw new Error("already spun this turn");
   s.decks.dilemmaDiscard.push(s.turn.pendingDilemma);
   s.turn.pendingDilemma = drawDilemma(s);
