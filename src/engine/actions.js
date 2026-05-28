@@ -501,3 +501,22 @@ export function usePower(state, { ideology, tier, params = {} }) {
   s.log.push(`${p.name} used ${key}`);
   return s;
 }
+
+// --- Capitalist L4: Open Market ------------------------------------------------
+// Pay 1 resource, take any 2 in return (once per turn).
+export function openMarket(state, { give, take }) {
+  if (state.turn.phase !== "actions") throw new Error("powers only in actions phase");
+  const s = clone(state);
+  const p = s.players[s.turn.current];
+  if ((p.piles.capitalist || 0) < 4) throw new Error("requires Capitalist L4");
+  if (p.usedThisTurn.openMarket) throw new Error("Open Market already used this turn");
+  if (!RESOURCES.includes(give) || (p.resources[give] || 0) < 1)
+    throw new Error("invalid give resource");
+  if (!Array.isArray(take) || take.length !== 2 || !take.every((r) => RESOURCES.includes(r)))
+    throw new Error("must take exactly 2 valid resources");
+  p.resources[give] -= 1;
+  for (const r of take) p.resources[r] += 1;
+  p.usedThisTurn.openMarket = true;
+  s.log.push(`${p.name} Open Market: 1 ${give} → ${take.join("+")}`);
+  return s;
+}
