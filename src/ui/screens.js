@@ -33,6 +33,14 @@ function h(tag, attrs = {}, ...kids) {
   return n;
 }
 
+function infoGlyph(ctx, sectionId) {
+  return h("button", {
+    class: "info-glyph",
+    "aria-label": `Rules: ${sectionId}`,
+    onclick: () => ctx.setUi({ rulesOpen: true, rulesSection: sectionId })
+  }, "ⓘ");
+}
+
 function select(options, value) {
   return h("select", {}, ...options.map((o) =>
     h("option", { value: o.value, selected: o.value === value ? "selected" : null }, o.label)));
@@ -72,6 +80,8 @@ function settingsControl(ctx) {
       `Narration: ${narrOn ? "On" : "Off"}`),
     h("button", { class: "btn btn-sm settings-row",
       onclick: () => ctx.dispatch("requestNewGame") }, "New game…"),
+    h("button", { class: "btn btn-sm settings-row",
+      onclick: () => ctx.setUi({ rulesOpen: true, rulesSection: "overview", settingsOpen: false }) }, "Rules"),
     h("button", { class: "btn btn-sm settings-row",
       onclick: () => ctx.setUi({ settingsOpen: false }) }, "Close"));
   return h("div", { class: "settings" }, gear, menu);
@@ -335,7 +345,9 @@ function playerPanel(ctx, me) {
         lvl >= 4 ? ` | ${powList.join(", ")}` : "")));
   }
   return h("div", { class: "panel" },
-    h("h3", {}, me.name),
+    h("div", { class: "panel-header" },
+      h("h3", {}, me.name),
+      infoGlyph(ctx, "powers")),
     resourceChips(me),
     h("hr", { class: "rule" }),
     h("div", { class: "label" }, "Ideology piles"),
@@ -384,7 +396,9 @@ function voteBankPanel(ctx, me, placing) {
     : null;
 
   return h("div", { class: "panel" },
-    h("h3", {}, "Vote Bank"),
+    h("div", { class: "panel-header" },
+      h("h3", {}, "Vote Bank"),
+      infoGlyph(ctx, "voteBank")),
     ...items,
     hint);
 }
@@ -420,7 +434,9 @@ function gerrymanderPanel(ctx, me) {
     : null;
 
   return h("div", { class: "panel" },
-    h("div", { class: "banner pop" }, `Gerrymander available`),
+    h("div", { class: "panel-header" },
+      h("div", { class: "banner pop" }, `Gerrymander available`),
+      infoGlyph(ctx, "gerrymander")),
     h("div", { class: "stack", style: "margin-top:8px" }, ...rows, cancel));
 }
 
@@ -442,7 +458,9 @@ function conspiracyPanel(ctx, me, placing) {
   for (const cardId of me.hand) hand.appendChild(handCard(ctx, me, cardId, placing));
 
   return h("div", { class: "panel" },
-    h("h3", {}, "Conspiracies"),
+    h("div", { class: "panel-header" },
+      h("h3", {}, "Conspiracies"),
+      infoGlyph(ctx, "conspiracies")),
     buy,
     h("hr", { class: "rule" }),
     h("div", { class: "label" }, "Your hand (secret)"),
@@ -543,7 +561,9 @@ function tradePanel(ctx, me, placing) {
   }, "Propose trade");
 
   return h("div", { class: "panel" },
-    h("h3", {}, "Trade"),
+    h("div", { class: "panel-header" },
+      h("h3", {}, "Trade"),
+      infoGlyph(ctx, "resources")),
     h("div", { class: "row" }, h("span", { class: "label" }, "With"), partnerSel),
     h("div", { class: "label" }, "You give"), giveRow,
     h("div", { class: "label" }, "You receive"), recvRow,
@@ -584,7 +604,9 @@ function coalitionPanel(ctx, me, placing) {
   }, "Propose coalition");
 
   return h("div", { class: "panel" },
-    h("h3", {}, "Coalition"),
+    h("div", { class: "panel-header" },
+      h("h3", {}, "Coalition"),
+      infoGlyph(ctx, "coalitions")),
     h("div", { class: "row" }, h("span", { class: "label" }, "With"), partnerSel),
     h("div", { class: "row" }, h("span", { class: "label" }, "Zone"), zoneSel),
     h("div", { class: "row" }, h("span", { class: "label" }, "Split"), splitSel),
@@ -722,7 +744,9 @@ function powerPanel(ctx, me, placing) {
 
   if (sections.length === 0) return h("div");
   return h("div", { class: "panel" },
-    h("h3", {}, "Active Powers"),
+    h("div", { class: "panel-header" },
+      h("h3", {}, "Active Powers"),
+      infoGlyph(ctx, "powers")),
     ...sections);
 }
 
@@ -740,7 +764,9 @@ function endPanel(ctx, placing) {
     h("li", {}, `${s.name}: ${s.zones} zones, ${s.score} flipped`));
 
   return h("div", { class: "panel" },
-    h("h3", {}, "Standings"),
+    h("div", { class: "panel-header" },
+      h("h3", {}, "Standings"),
+      infoGlyph(ctx, "scoring")),
     h("ul", { class: "tally" }, ...rows),
     h("hr", { class: "rule" }),
     blockEnd ? h("p", { class: "cost-mini" }, "Finish placing voters before ending the turn.") : null,

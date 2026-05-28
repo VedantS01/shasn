@@ -322,3 +322,17 @@ test("turn screen renders with the settings menu open without throwing", () => {
   render(root, ctx(g, { mode: "play", error: null, settingsOpen: true }));
   assert.ok(root.children.length > 0);
 });
+
+test("rules modal renders without throwing", () => {
+  const root = makeNode("main");
+  render(root, ctx(null, { mode: "setup", rulesOpen: true, rulesSection: "overview" }));
+  assert.ok(root.children.length > 0);
+});
+
+test("rules modal: different section selection", () => {
+  const g = createGame({ players: P, seed: 1 });
+  g.turn = { ...g.turn, phase: "actions", current: 0, draftRemaining: 0 };
+  const root = makeNode("main");
+  render(root, ctx(g, { mode: "play", rulesOpen: true, rulesSection: "gerrymander" }));
+  assert.ok(root.children.length > 0);
+});

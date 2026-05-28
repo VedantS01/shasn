@@ -137,6 +137,25 @@
 .tok-funds { background: var(--funds); } .tok-clout { background: var(--clout); }
 .tok-media { background: var(--media); } .tok-trust { background: var(--trust); color: #1a1714; }
 
+/* Rules modal */
+.rules-scrim { z-index: 60; }
+.rules-modal { display: grid; grid-template-columns: 180px 1fr; gap: 16px;
+  background: var(--paper); border: 2px solid var(--ink); border-radius: 4px;
+  max-width: 720px; width: 90%; max-height: 80vh; padding: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+.rules-nav { display: flex; flex-direction: column; gap: 4px; max-height: 70vh; overflow: auto; }
+.rules-nav-btn { text-align: left; background: var(--paper); border: 1.5px solid var(--ink);
+  padding: 6px 10px; border-radius: 2px; font-size: 13px; cursor: pointer; }
+.rules-nav-btn.active { background: var(--ink); color: var(--paper); font-weight: 700; }
+.rules-body { overflow: auto; padding-right: 8px; }
+.rules-body h2 { margin: 0 0 12px; }
+.rules-body p { font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
+.rules-close { grid-column: 1 / -1; justify-self: end; }
+.info-glyph { background: transparent; border: 0; padding: 2px 6px; cursor: pointer;
+  color: var(--muted); font-size: 14px; line-height: 1; }
+.info-glyph:hover { color: var(--ink); }
+.panel-header { display: flex; align-items: center; justify-content: space-between; }
+
 /* Endgame */
 .standings { width: 100%; border-collapse: collapse; margin: 10px 0; }
 .standings th, .standings td { border-bottom: 1px solid var(--rule); padding: 6px 8px; text-align: left; }
