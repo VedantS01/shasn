@@ -12,13 +12,6 @@ test("there are exactly 9 zones with unique ids", () => {
   assert.equal(new Set(ZONES.map((z) => z.id)).size, 9);
 });
 
-test("every zone has an odd capacity between 5 and 11", () => {
-  for (const z of ZONES) {
-    assert.ok(z.capacity >= 5 && z.capacity <= 11, `${z.id} capacity range`);
-    assert.equal(z.capacity % 2, 1, `${z.id} capacity odd`);
-  }
-});
-
 test("neighbor graph is symmetric and references real zones", () => {
   for (const z of ZONES) {
     for (const n of z.neighbors) {
@@ -26,14 +19,6 @@ test("neighbor graph is symmetric and references real zones", () => {
       assert.ok(ZONE_BY_ID[n].neighbors.includes(z.id), `${n} must list ${z.id} back`);
     }
   }
-});
-
-test("every zone has a name and ring position", () => {
-  for (const z of ZONES) {
-    assert.ok(z.name && typeof z.name === "string");
-    assert.ok(z.ring === "center" || typeof z.ring === "number", `${z.id} ring`);
-  }
-  assert.equal(ZONES.filter((z) => z.ring === "center").length, 1, "exactly one center zone");
 });
 
 test("voter offers have positive value and valid resource costs", () => {
@@ -88,5 +73,39 @@ test("headlines: unique ids, known effect types, valid grant/lose params", () =>
       assert.ok(RESOURCES.includes(hl.effect.params.resource), `${hl.id} resource`);
       assert.ok(hl.effect.params.amount > 0, `${hl.id} amount`);
     }
+  }
+});
+
+test("map: 9 zones with rulebook capacities and majorities", () => {
+  const expected = {
+    central: 9, north: 21, south: 21, east: 17, west: 17,
+    ne: 11, nw: 11, se: 11, sw: 11
+  };
+  assert.equal(ZONES.length, 9);
+  for (const [id, cap] of Object.entries(expected)) {
+    const z = ZONE_BY_ID[id];
+    assert.ok(z, `zone ${id} present`);
+    assert.equal(z.capacity, cap, `${id} capacity ${cap}`);
+    assert.equal(z.majority, Math.ceil((cap + 1) / 2), `${id} majority (cap+1)/2`);
+  }
+});
+
+test("map: central touches all 8 others; corners touch 2 cardinals + central", () => {
+  const c = ZONE_BY_ID.central;
+  assert.deepEqual(c.neighbors.sort(), ["east","ne","north","nw","se","south","sw","west"]);
+  assert.deepEqual(ZONE_BY_ID.ne.neighbors.sort(), ["central","east","north"]);
+  assert.deepEqual(ZONE_BY_ID.nw.neighbors.sort(), ["central","north","west"]);
+  assert.deepEqual(ZONE_BY_ID.se.neighbors.sort(), ["central","east","south"]);
+  assert.deepEqual(ZONE_BY_ID.sw.neighbors.sort(), ["central","south","west"]);
+});
+
+test("map: each zone declares volatile seat indices within capacity range", () => {
+  for (const z of ZONES) {
+    assert.ok(Array.isArray(z.volatileSeats));
+    assert.ok(z.volatileSeats.length >= 2, `${z.id} has >=2 volatile seats`);
+    for (const i of z.volatileSeats) {
+      assert.ok(i >= 0 && i < z.capacity, `${z.id} volatile index ${i} in range`);
+    }
+    assert.equal(new Set(z.volatileSeats).size, z.volatileSeats.length);
   }
 });
