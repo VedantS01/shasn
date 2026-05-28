@@ -459,14 +459,21 @@ export function buyConspiracy(state) {
   return s;
 }
 
-export function playConspiracy(state, { cardId, target, actorId }) {
+export function playConspiracy(state, { cardId, target = {}, playerId }) {
+  if (state.turn.phase !== "actions") throw new Error("play only in actions phase");
+  const actor = playerId == null ? state.turn.current : playerId;
+  if (actor !== state.turn.current) {
+    // Mid-opponent turn play must be a Block/Reverse interrupt.
+    const card = CONSPIRACY_BY_ID[cardId];
+    if (!card || !card.canInterrupt || !["block", "reverse"].includes(card.family))
+      throw new Error("only Block!/Reverse! interrupts can be played mid-opponent turn");
+  }
   const s = clone(state);
-  const actor = actorId ?? s.turn.current;
   const p = s.players[actor];
   const idx = p.hand.indexOf(cardId);
   if (idx === -1) throw new Error("card not in hand");
   const card = CONSPIRACY_BY_ID[cardId];
-  resolveEffect(s, card.effect, { actorId: actor, target: target || {} });
+  resolveEffect(s, card.effect, { actorId: actor, target });
   p.hand.splice(idx, 1);
   s.decks.conspiracyDiscard.push(cardId);
   s.log.push(`${p.name} played ${card.name}`);

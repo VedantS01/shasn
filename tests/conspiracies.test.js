@@ -67,3 +67,20 @@ test("playConspiracy throws if card not in hand", () => {
   let g = ready();
   assert.throws(() => playConspiracy(g, { cardId: "c001" }), /not in hand/);
 });
+
+test("playConspiracy: non-interrupt card rejected mid-opponent turn", () => {
+  let g = createGame({ players: P, seed: 1 });
+  g.turn = { ...g.turn, phase: "actions", current: 0 };
+  g.players[1].hand = ["c001"];   // War Chest, not interruptible
+  assert.throws(() => playConspiracy(g, { cardId: "c001", playerId: 1 }), /interrupt/i);
+});
+
+test("playConspiracy: Block! (canInterrupt) can be played by an opponent during your turn", () => {
+  let g = createGame({ players: P, seed: 1 });
+  g.turn = { ...g.turn, phase: "actions", current: 0 };
+  g.players[1].hand = ["c021"];   // Block!
+  // Should not throw; the no-op block effect resolves cleanly.
+  g = playConspiracy(g, { cardId: "c021", playerId: 1 });
+  assert.ok(!g.players[1].hand.includes("c021"));
+  assert.ok(g.decks.conspiracyDiscard.includes("c021"));
+});
