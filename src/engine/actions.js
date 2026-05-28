@@ -5,8 +5,10 @@ import { DILEMMA_BY_ID } from "../data/dilemmas.js";
 import { VOTER_BY_ID, VOLATILE_COST } from "../data/voters.js";
 import { CONSPIRACY_BY_ID } from "../data/conspiracies.js";
 import { HEADLINE_BY_ID } from "../data/headlines.js";
+import { VOTE_BANK_BY_ID } from "../data/voteBank.js";
 import { resolveEffect } from "./conspiracies.js";
 import { resolveHeadline } from "./headlines.js";
+import { takeOpen } from "./market.js";
 import {
   isGameOver, canReachZone, majorityHolder, majorityThreshold,
   neighborsOf, emptySeats, pegCount, effectivePegs
@@ -188,6 +190,44 @@ export function buyVoter(state, { offerId }) {
   for (const [r, n] of Object.entries(cost)) p.resources[r] -= n;
   s.turn.toPlace = offer.value;
   s.log.push(`${p.name} bought ${offer.label} (${offer.value} to place)`);
+  return s;
+}
+
+// Buy a Vote Bank card: pays its cost, queues tokensRemaining to place via turn.currentBuy,
+// and advances the market (replaces the slot from the deck).
+export function buyVoteBank(state, { openIndex, useBlindFaith = false }) {
+  if (state.turn.phase !== "actions") throw new Error("buy only in actions phase");
+  if (state.turn.currentBuy && state.turn.currentBuy.tokensRemaining > 0)
+    throw new Error("finish placing your voters first");
+  const cardId = state.market.open[openIndex];
+  if (!cardId) throw new Error("no card at that open slot");
+  const card = VOTE_BANK_BY_ID[cardId];
+  let cost = { ...card.cost };
+  // Blind Faith (Idealist L4) waives the marked resource.
+  if (useBlindFaith) {
+    if ((state.players[state.turn.current].piles.idealist || 0) < 4)
+      throw new Error("Blind Faith requires Idealist L4");
+    delete cost[card.markedResource];
+  }
+  // Affordability check on the original state, before market mutation.
+  if (!canAfford(state.players[state.turn.current], cost))
+    throw new Error("cannot afford voter");
+  // Mutate market first (since takeOpen clones), then apply player changes.
+  let s = takeOpen(state, openIndex);
+  const p = s.players[s.turn.current];
+  for (const [r, n] of Object.entries(cost)) p.resources[r] -= n;
+  // Echo Chamber (Showman L4): +1 voter per unique card id influenced this turn, cap 3.
+  let value = card.value;
+  if ((p.piles.showman || 0) >= 4) {
+    p.usedThisTurn.echoChamberCardIds = p.usedThisTurn.echoChamberCardIds || [];
+    if (p.usedThisTurn.echoChamberCardIds.length < 3 &&
+        !p.usedThisTurn.echoChamberCardIds.includes(card.id)) {
+      p.usedThisTurn.echoChamberCardIds.push(card.id);
+      value += 1;
+    }
+  }
+  s.turn.currentBuy = { cardId: card.id, zoneId: null, tokensRemaining: value };
+  s.log.push(`${p.name} bought ${card.id} (${value} to place)`);
   return s;
 }
 
