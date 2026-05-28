@@ -283,22 +283,41 @@ export function placeToken(state, { zoneId, seatIndex }) {
   return s;
 }
 
-export function gerrymander(state, { fromZone, toZone, pegOwner }) {
-  if (state.turn.gerrymanders <= 0) throw new Error("no gerrymander available");
-  if (!neighborsOf(fromZone).includes(toZone)) throw new Error("zones not adjacent");
+export function gerrymander(state, { majorityZoneId, fromZoneId, fromSeatIndex, toZoneId, toSeatIndex }) {
+  if (state.turn.phase !== "actions") throw new Error("gerrymander only in actions phase");
+  const budget = state.turn.gerrymanderMoves[majorityZoneId] || 0;
+  if (budget <= 0) throw new Error("no moves left for that majority");
   const s = clone(state);
-  const from = s.zones.find((z) => z.id === fromZone);
-  const to = s.zones.find((z) => z.id === toZone);
-  if (pegCount(from, pegOwner) <= 0) throw new Error("no such peg to move");
-  if (pegCount(from, pegOwner) >= majorityThreshold(fromZone)) throw new Error("cannot move a non-majority peg from a majority stack");
-  const dest = emptySeats(to);
-  if (dest.length === 0) throw new Error("destination full");
-
-  from.seats[from.seats.indexOf(pegOwner)] = null;
-  to.seats[dest[0]] = pegOwner;
-  s.turn.gerrymanders -= 1;
-  s.log.push(`gerrymander: moved a ${s.players[pegOwner].name} peg ${fromZone}→${toZone}`);
-  relockZones(s);
+  const pid = s.turn.current;
+  const maj = s.zones.find((z) => z.id === majorityZoneId);
+  if (!maj || maj.lockedBy !== pid) throw new Error("not your solo majority");
+  // Source must be in majority zone or a neighbor.
+  const sourcePool = new Set([majorityZoneId, ...neighborsOf(majorityZoneId)]);
+  if (!sourcePool.has(fromZoneId)) throw new Error("source not in majority zone or neighbor");
+  // Source and destination must share a border with each other.
+  const adj = (a, b) => a === b ? false : neighborsOf(a).includes(b);
+  if (!adj(fromZoneId, toZoneId)) throw new Error("source/dest do not share a border");
+  if (!sourcePool.has(toZoneId)) throw new Error("dest not in majority zone or neighbor");
+  const from = s.zones.find((z) => z.id === fromZoneId);
+  const to = s.zones.find((z) => z.id === toZoneId);
+  if (from.seats[fromSeatIndex] == null) throw new Error("no voter at source");
+  if (from.flippedSeats[fromSeatIndex]) throw new Error("cannot move a flipped majority voter");
+  if (from.volatileSeats.includes(fromSeatIndex)) throw new Error("voter on a volatile seat is immune");
+  if (to.seats[toSeatIndex] != null) throw new Error("destination occupied");
+  const movedOwner = from.seats[fromSeatIndex];
+  from.seats[fromSeatIndex] = null;
+  to.seats[toSeatIndex] = movedOwner;
+  if (to.volatileSeats.includes(toSeatIndex)) {
+    s.turn.pendingHeadlines.push({ zoneId: toZoneId, playerId: movedOwner });
+  }
+  s.turn.gerrymanderMoves[majorityZoneId] = budget - 1;
+  // The source zone might lose its majority lock if the moved voter pushed an
+  // existing majority holder under threshold (rare, but handle for correctness).
+  if (from.lockedBy !== null && voteCount(from, from.lockedBy) < majorityThreshold(from.id)) {
+    from.flippedSeats = from.flippedSeats.map(() => false);
+    from.lockedBy = null;
+  }
+  s.log.push(`gerrymander ${fromZoneId}[${fromSeatIndex}] → ${toZoneId}[${toSeatIndex}]`);
   return s;
 }
 
