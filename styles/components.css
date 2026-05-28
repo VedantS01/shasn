@@ -55,6 +55,20 @@
 .vol-mark { font: 700 12px var(--sans); fill: #7a1f17; pointer-events: none; }
 .vol-seat.filled + .vol-mark, .vol-seat.filled ~ .vol-mark { fill: #fff; }
 
+/* Gerrymander seat highlights */
+.seat.gerry-source { cursor: pointer; stroke: #e0a800; stroke-width: 3; filter: drop-shadow(0 0 4px #e0a800); }
+.seat.gerry-source:hover { fill: #ffe680; }
+.seat.gerry-dest { cursor: pointer; stroke: #2f9e57; stroke-width: 3; filter: drop-shadow(0 0 4px #2f9e57); }
+.seat.gerry-dest:hover { fill: #c6f2d7; }
+
+/* Scored (flipped) seat label */
+.s-mark { font: 800 9px var(--sans); fill: #fff; pointer-events: none;
+  paint-order: stroke; stroke: rgba(0,0,0,.5); stroke-width: 0.8px; }
+
+/* Hint banner */
+.hint-banner { background: #f5f0e8; border: 1.5px solid var(--rule); border-left: 5px solid var(--ink);
+  padding: 8px 14px; border-radius: 2px; font-size: 13px; margin-bottom: 12px; }
+
 /* Cards (dilemma, conspiracy) */
 .card { border: 2px solid var(--ink); background: var(--paper); padding: 16px; border-radius: 2px; }
 .card h3 { font-size: 20px; }
