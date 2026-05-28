@@ -11,7 +11,7 @@ import { resolveHeadline } from "./headlines.js";
 import { takeOpen } from "./market.js";
 import {
   isGameOver, canReachZone, majorityHolder, majorityThreshold,
-  neighborsOf, emptySeats, pegCount, effectivePegs
+  neighborsOf, emptySeats, pegCount, effectivePegs, voteCount
 } from "./rules.js";
 
 // --- deck helpers -----------------------------------------------------------
@@ -231,22 +231,55 @@ export function buyVoteBank(state, { openIndex, useBlindFaith = false }) {
   return s;
 }
 
-// Place one bought token on a specific empty circle in a reachable, unlocked zone.
+function flipMajorityIfReached(s, zone, pid) {
+  if (zone.lockedBy !== null || zone.coalition !== null) return;
+  const need = majorityThreshold(zone.id);
+  if (voteCount(zone, pid) < need) return;
+  let flipped = 0;
+  for (let i = 0; i < zone.seats.length && flipped < need; i++) {
+    if (zone.seats[i] === pid && !zone.flippedSeats[i]) {
+      zone.flippedSeats[i] = true;
+      flipped++;
+    }
+  }
+  zone.lockedBy = pid;
+  s.log.push(`${s.players[pid].name} locked ${zone.id}`);
+}
+
+// Place one bought token on a specific empty circle in an unlocked zone.
 export function placeToken(state, { zoneId, seatIndex }) {
-  if (state.turn.phase !== "actions") throw new Error("place only in actions phase");
-  if (state.turn.toPlace <= 0) throw new Error("no voters to place");
+  if (state.turn.phase !== "actions" && state.turn.phase !== "placePending")
+    throw new Error("place only in actions/placePending phase");
   const s = clone(state);
   const p = s.players[s.turn.current];
   const zone = s.zones.find((z) => z.id === zoneId);
   if (!zone) throw new Error("no such zone");
-  if (!canReachZone(s, p.id, zoneId)) throw new Error("cannot place in that zone");
-  if (seatIndex == null || seatIndex < 0 || seatIndex >= zone.seats.length || zone.seats[seatIndex] !== null) {
-    throw new Error("that circle is not available");
+  if (zone.lockedBy !== null || zone.coalition !== null)
+    throw new Error("zone is closed");
+  if (seatIndex == null || seatIndex < 0 || seatIndex >= zone.seats.length ||
+      zone.seats[seatIndex] !== null) throw new Error("seat not available");
+
+  if (s.turn.phase === "actions") {
+    const buy = s.turn.currentBuy;
+    if (!buy || buy.tokensRemaining <= 0) throw new Error("no voters to place");
+    if (buy.zoneId && buy.zoneId !== zoneId)
+      throw new Error("all voters from one card must go in the same zone");
+    buy.zoneId = zoneId;
+    buy.tokensRemaining -= 1;
+    if (buy.tokensRemaining === 0) s.turn.currentBuy = null;
+  } else {
+    if (p.pendingPlacements <= 0) throw new Error("no pending placements");
+    p.pendingPlacements -= 1;
   }
+
   zone.seats[seatIndex] = p.id;
-  s.turn.toPlace -= 1;
-  s.log.push(`${p.name} placed a voter in ${zoneId}`);
-  lockIfMajority(s, zone, p);
+  if (zone.volatileSeats.includes(seatIndex)) {
+    s.turn.pendingHeadlines.push({ zoneId, playerId: p.id });
+    s.log.push(`${p.name} placed on volatile seat in ${zoneId} — headline queued`);
+  }
+  flipMajorityIfReached(s, zone, p.id);
+  if (s.turn.phase === "placePending" && p.pendingPlacements === 0)
+    s.turn.phase = "actions";
   return s;
 }
 
