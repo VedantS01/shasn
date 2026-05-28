@@ -1,6 +1,6 @@
 import { clone } from "./state.js";
 import { shuffle, makeRng } from "./rng.js";
-import { tierOf, RESOURCES } from "./constants.js";
+import { tierOf, RESOURCES, IDEOLOGIES, RESOURCE_OF } from "./constants.js";
 import { DILEMMA_BY_ID } from "../data/dilemmas.js";
 import { VOTER_BY_ID, VOLATILE_COST } from "../data/voters.js";
 import { CONSPIRACY_BY_ID } from "../data/conspiracies.js";
@@ -11,7 +11,8 @@ import { resolveHeadline } from "./headlines.js";
 import { takeOpen } from "./market.js";
 import {
   isGameOver, canReachZone, majorityHolder, majorityThreshold,
-  neighborsOf, emptySeats, pegCount, effectivePegs, voteCount
+  neighborsOf, emptySeats, pegCount, effectivePegs, voteCount,
+  soloMajorityZones
 } from "./rules.js";
 
 // --- deck helpers -----------------------------------------------------------
@@ -65,16 +66,46 @@ export function draftResource(state, { resource }) {
 }
 
 // --- turn lifecycle ---------------------------------------------------------
+const RESOURCE_CAP_VAL = 12;
+const sumRes = (p) => RESOURCES.reduce((s, r) => s + (p.resources[r] || 0), 0);
+
+function applyPassive(p) {
+  for (const ide of IDEOLOGIES) {
+    const n = Math.floor((p.piles[ide] || 0) / 2);
+    if (n > 0) p.resources[RESOURCE_OF[ide]] += n;
+  }
+}
+
+function computeGerryBudget(s, pid) {
+  const out = {};
+  const idealistL6 = (s.players[pid].piles.idealist || 0) >= 6;
+  for (const z of soloMajorityZones(s, pid)) out[z.id] = idealistL6 ? 2 : 1;
+  return out;
+}
+
 export function beginTurn(state) {
   const s = clone(state);
   const p = s.players[s.turn.current];
   p.usedThisTurn = {};
   s.lastHeadline = null;
-  if (tierOf(p.piles.idealist) >= 1) { p.resources.trust += 1; }
-  s.turn.pendingDilemma = drawDilemma(s);
+  applyPassive(p);
+  s.turn.pendingDilemma = s.decks.dilemmaDraw.shift();
+  s.turn.gerrymanderMoves = computeGerryBudget(s, p.id);
+  s.turn.currentBuy = null;
+  s.turn.pendingHeadlines = [];
+  if (s.turn.firstTurn) {
+    delete s.turn.firstTurn;
+    s.turn.phase = "dilemma";
+  } else {
+    s.turn.phase = "readAloud";
+  }
+  return s;
+}
+
+export function doneReadAloud(state) {
+  if (state.turn.phase !== "readAloud") throw new Error("not in readAloud");
+  const s = clone(state);
   s.turn.phase = "dilemma";
-  s.turn.gerrymanders = 0;
-  s.turn.toPlace = 0;
   return s;
 }
 
@@ -89,17 +120,45 @@ export function answerDilemma(state, { answerIndex }) {
   p.piles[answer.ideology] += 1;
   s.decks.dilemmaDiscard.push(card.id);
   s.turn.pendingDilemma = null;
-  s.turn.phase = "actions";
+  if (sumRes(p) > RESOURCE_CAP_VAL) s.turn.phase = "discard";
+  else if (p.pendingPlacements > 0) s.turn.phase = "placePending";
+  else s.turn.phase = "actions";
   s.log.push(`${p.name} chose "${answer.label}"`);
   return s;
 }
 
+export function donePendingPlace(state) {
+  if (state.turn.phase !== "placePending") throw new Error("not placePending");
+  const s = clone(state);
+  s.players[s.turn.current].pendingPlacements = 0;
+  s.turn.phase = "actions";
+  return s;
+}
+
 export function endTurn(state) {
-  if (state.turn.phase !== "actions") throw new Error("can only end turn in actions phase");
+  if (state.turn.phase !== "actions") throw new Error("end only in actions phase");
   let s = clone(state);
-  if (isGameOver(s)) { return finishGame(s); }
+  // 1. Drain pending headlines
+  while (s.turn.pendingHeadlines.length > 0) {
+    if (s.decks.headlineDraw.length === 0) {
+      s.decks.headlineDraw = shuffle(s.decks.headlineDiscard, makeRng(s.seed + s.log.length));
+      s.decks.headlineDiscard = [];
+    }
+    const cardId = s.decks.headlineDraw.shift();
+    const entry = s.turn.pendingHeadlines.shift();
+    const headline = HEADLINE_BY_ID[cardId];
+    resolveHeadline(s, headline, entry.playerId);
+    s.decks.headlineDiscard.push(cardId);
+    s.lastHeadline = { ...headline, player: entry.playerId };
+  }
+  // 2. End game check
+  if (isGameOver(s)) return finishGame(s);
+  // 3. Advance and begin next turn, preserving lastHeadline from drain
+  const savedLastHeadline = s.lastHeadline;
   s.turn.current = (s.turn.current + 1) % s.players.length;
-  return beginTurn(s);
+  const next = beginTurn(s);
+  if (savedLastHeadline) next.lastHeadline = savedLastHeadline;
+  return next;
 }
 
 export function finishGame(state) {
