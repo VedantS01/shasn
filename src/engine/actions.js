@@ -12,7 +12,7 @@ import { takeOpen } from "./market.js";
 import {
   isGameOver, canReachZone, majorityHolder, majorityThreshold,
   neighborsOf, emptySeats, pegCount, effectivePegs, voteCount,
-  soloMajorityZones
+  soloMajorityZones, standings
 } from "./rules.js";
 
 // --- deck helpers -----------------------------------------------------------
@@ -163,12 +163,8 @@ export function endTurn(state) {
 
 export function finishGame(state) {
   const s = clone(state);
-  const ranked = [...s.players].map((p) => ({
-    id: p.id,
-    zones: s.zones.filter((z) => z.lockedBy === p.id).length,
-    pegs: s.zones.reduce((t, z) => t + effectivePegs(z, p.id), 0)
-  })).sort((a, b) => b.zones - a.zones || b.pegs - a.pegs);
-  s.winner = ranked[0].id;
+  const ranked = standings(s);
+  s.winner = ranked[0].playerId;
   s.turn.phase = "gameover";
   s.log.push(`Game over — winner is ${s.players[s.winner].name}`);
   return s;
