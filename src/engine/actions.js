@@ -648,6 +648,8 @@ export function civilDisobedience(state, { targets, pay }) {
   return s;
 }
 
+export { proposeTrade, respondTrade } from "./trade.js";
+
 // --- Capitalist L4: Open Market ------------------------------------------------
 // Pay 1 resource, take any 2 in return (once per turn).
 export function openMarket(state, { give, take }) {
