@@ -407,21 +407,33 @@ export function occupyVolatile(state, { zoneId }) {
 }
 
 // --- conspiracies -----------------------------------------------------------
-export function buyConspiracy(state, { spend }) {
+export function buyConspiracy(state) {
   if (state.turn.phase !== "actions") throw new Error("buy only in actions phase");
-  if (state.turn.toPlace > 0) throw new Error("finish placing your voters first");
-  const s = clone(state);
-  const p = s.players[s.turn.current];
-  const total = Object.values(spend).reduce((a, b) => a + b, 0);
-  const min = tierOf(p.piles.showstopper) >= 2 ? 3 : 4;   // Showstopper T2
-  if (total < min || total > 5) throw new Error(`spend must total ${min}-5`);
-  for (const [r, n] of Object.entries(spend)) {
-    if (p.resources[r] < n) throw new Error("cannot afford spend");
+  if (state.turn.currentBuy && state.turn.currentBuy.tokensRemaining > 0)
+    throw new Error("finish placing your voters first");
+  let s = clone(state);
+  if (s.decks.conspiracyDraw.length === 0) {
+    s.decks.conspiracyDraw = shuffle(s.decks.conspiracyDiscard, makeRng(s.seed + s.log.length));
+    s.decks.conspiracyDiscard = [];
   }
-  for (const [r, n] of Object.entries(spend)) p.resources[r] -= n;
-  const card = drawConspiracy(s);
-  if (card) p.hand.push(card);
-  s.log.push(`${p.name} bought a conspiracy`);
+  if (s.decks.conspiracyDraw.length === 0) throw new Error("conspiracy deck empty");
+  const topId = s.decks.conspiracyDraw[0];
+  const card = CONSPIRACY_BY_ID[topId];
+  const cost = card.cost;
+  const p = s.players[s.turn.current];
+  const total = RESOURCES.reduce((sum, r) => sum + (p.resources[r] || 0), 0);
+  if (total < cost) throw new Error("cannot afford");
+  // Drain deterministically: highest pile first.
+  let remaining = cost;
+  for (const r of [...RESOURCES].sort((a, b) => (p.resources[b] || 0) - (p.resources[a] || 0))) {
+    const take = Math.min(remaining, p.resources[r] || 0);
+    p.resources[r] -= take;
+    remaining -= take;
+    if (remaining === 0) break;
+  }
+  s.decks.conspiracyDraw.shift();
+  p.hand.push(topId);
+  s.log.push(`${p.name} bought conspiracy ${topId} for ${cost}`);
   return s;
 }
 

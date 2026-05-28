@@ -2,32 +2,38 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createGame } from "../src/engine/state.js";
 import { beginTurn, answerDilemma, buyConspiracy, playConspiracy } from "../src/engine/actions.js";
+import { CONSPIRACY_BY_ID } from "../src/data/conspiracies.js";
 import { pegCount } from "../src/engine/rules.js";
 
 const P = [{ name: "A", color: "#1" }, { name: "B", color: "#2" }];
-function ready(seed = 1) { return answerDilemma(beginTurn(createGame({ players: P, seed })), { answerIndex: 0 }); }
+// Produce a game state in the "actions" phase by fast-forwarding through draft+dilemma.
+// beginTurn enters dilemma directly only when state.turn.firstTurn is set.
+function ready(seed = 1) {
+  const raw = createGame({ players: P, seed });
+  raw.turn.firstTurn = true;
+  return answerDilemma(beginTurn(raw), { answerIndex: 0 });
+}
 function give(g, pid, res) { Object.assign(g.players[pid].resources, res); return g; }
 
-test("buyConspiracy spends 4-5 chosen resources and draws into hand", () => {
-  let g = give(ready(), 0, { funds: 5, clout: 5, media: 5, trust: 5 });
+test("buyConspiracy: pays the top card's fixed cost and draws into hand", () => {
+  let g = createGame({ players: P, seed: 1 });
+  g.turn = { ...g.turn, phase: "actions", current: 0 };
+  g.players[0].resources = { funds: 9, clout: 9, media: 9, trust: 9 };
+  const top = g.decks.conspiracyDraw[0];
+  const expectedCost = CONSPIRACY_BY_ID[top].cost;
   const before = g.players[0].hand.length;
-  g = buyConspiracy(g, { spend: { funds: 2, clout: 2 } });   // total 4
+  g = buyConspiracy(g);
   assert.equal(g.players[0].hand.length, before + 1);
-  assert.equal(g.players[0].resources.funds, 3);
-  assert.equal(g.players[0].resources.clout, 3);
+  assert.ok(g.players[0].hand.includes(top));
+  const totalAfter = ["funds","clout","media","trust"].reduce((s, r) => s + g.players[0].resources[r], 0);
+  assert.equal(totalAfter, 36 - expectedCost);
 });
 
-test("buyConspiracy rejects spend below 4 (no Showstopper) or above 5", () => {
-  let g = give(ready(), 0, { funds: 9, clout: 9, media: 9, trust: 9 });
-  assert.throws(() => buyConspiracy(g, { spend: { funds: 3 } }), /spend/);
-  assert.throws(() => buyConspiracy(g, { spend: { funds: 6 } }), /spend/);
-});
-
-test("Showstopper tier-2 allows a minimum spend of 3", () => {
-  let g = give(ready(), 0, { funds: 9, clout: 9, media: 9, trust: 9 });
-  g.players[0].piles.showstopper = 3;     // tier 2
-  g = buyConspiracy(g, { spend: { funds: 3 } });
-  assert.equal(g.players[0].resources.funds, 6);
+test("buyConspiracy: throws when total resources < top card's cost", () => {
+  let g = createGame({ players: P, seed: 1 });
+  g.turn = { ...g.turn, phase: "actions", current: 0 };
+  g.players[0].resources = { funds: 1, clout: 0, media: 0, trust: 0 };  // less than min cost
+  assert.throws(() => buyConspiracy(g), /afford/i);
 });
 
 test("playConspiracy grantResource adds resources and discards the card", () => {
@@ -51,10 +57,10 @@ test("playConspiracy stealResource moves resources from target to actor", () => 
 test("playConspiracy removePeg removes a non-majority peg from a zone", () => {
   let g = ready();
   g.players[0].hand = ["c005"];           // Booth Capture
-  const z4 = g.zones.find((z) => z.id === "z4");
-  z4.seats = z4.seats.map(() => null); z4.seats[0] = 1; z4.seats[1] = 1;
-  g = playConspiracy(g, { cardId: "c005", target: { zoneId: "z4", pegOwner: 1 } });
-  assert.equal(pegCount(g.zones.find((z) => z.id === "z4"), 1), 1);
+  const zone = g.zones.find((z) => z.id === "central");
+  zone.seats[0] = 1; zone.seats[1] = 1;
+  g = playConspiracy(g, { cardId: "c005", target: { zoneId: "central", pegOwner: 1 } });
+  assert.equal(pegCount(g.zones.find((z) => z.id === "central"), 1), 1);
 });
 
 test("playConspiracy throws if card not in hand", () => {

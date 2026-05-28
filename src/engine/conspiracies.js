@@ -34,7 +34,9 @@ export const RESOLVERS = {
   protectMajority(state, ctx) {
     const zone = state.zones.find((z) => z.id === ctx.target.zoneId);
     zone.protected = true;
-  }
+  },
+  block(state, ctx) { /* no-op for now; UI intercepts */ },
+  reverse(state, ctx) { /* no-op for now; UI intercepts */ }
 };
 
 export function resolveEffect(state, effect, ctx) {
