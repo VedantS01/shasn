@@ -153,12 +153,34 @@ export function endTurn(state) {
   }
   // 2. End game check
   if (isGameOver(s)) return finishGame(s);
-  // 3. Advance and begin next turn, preserving lastHeadline from drain
-  const savedLastHeadline = s.lastHeadline;
-  s.turn.current = (s.turn.current + 1) % s.players.length;
-  const next = beginTurn(s);
-  if (savedLastHeadline) next.lastHeadline = savedLastHeadline;
-  return next;
+  // 3. Enter betweenTurns phase — each non-active player gets a pass slot
+  // before the next player's turn begins.
+  const n = s.players.length;
+  const nextActive = (s.turn.current + 1) % n;
+  // Walk non-active players starting from the one after nextActive (so we
+  // never prompt the player about to take their turn). For n=2, the only
+  // non-active is the just-finished player (current), which equals
+  // (nextActive + 1) % 2.
+  s.turn.phase = "betweenTurns";
+  s.turn.betweenTurnsAt = (nextActive + 1) % n;
+  return s;
+}
+
+export function passBetweenTurns(state) {
+  if (state.turn.phase !== "betweenTurns") throw new Error("not in betweenTurns");
+  const s = clone(state);
+  const n = s.players.length;
+  const nextActive = (s.turn.current + 1) % n;
+  // Move to the next non-active player; if we've cycled back to nextActive,
+  // we're done — advance the turn.
+  const next = (s.turn.betweenTurnsAt + 1) % n;
+  if (next === nextActive) {
+    s.turn.current = nextActive;
+    s.turn.betweenTurnsAt = null;
+    return beginTurn(s);
+  }
+  s.turn.betweenTurnsAt = next;
+  return s;
 }
 
 export function finishGame(state) {
