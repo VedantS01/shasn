@@ -109,3 +109,21 @@ test("map: each zone declares volatile seat indices within capacity range", () =
     assert.equal(new Set(z.volatileSeats).size, z.volatileSeats.length);
   }
 });
+
+import { VOTE_BANK, VOTE_BANK_BY_ID } from "../src/data/voteBank.js";
+
+test("voteBank: 60 unique cards, value distribution 20/25/15, marked resource is a cost slot", () => {
+  assert.equal(VOTE_BANK.length, 60);
+  assert.equal(new Set(VOTE_BANK.map((c) => c.id)).size, 60, "ids unique");
+  const counts = { 1: 0, 2: 0, 3: 0 };
+  for (const c of VOTE_BANK) {
+    assert.ok([1, 2, 3].includes(c.value), `${c.id} value 1/2/3`);
+    counts[c.value]++;
+    const total = Object.values(c.cost).reduce((s, n) => s + n, 0);
+    assert.ok(total > 0 && total <= 6, `${c.id} cost total in 1..6`);
+    assert.ok(c.cost[c.markedResource] > 0, `${c.id} marked resource is part of cost`);
+  }
+  assert.equal(counts[1], 20);
+  assert.equal(counts[2], 25);
+  assert.equal(counts[3], 15);
+});
