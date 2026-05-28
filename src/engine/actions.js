@@ -502,6 +502,56 @@ export function usePower(state, { ideology, tier, params = {} }) {
   return s;
 }
 
+// --- Capitalist L6: Land Grab --------------------------------------------------
+// Evict up to 2 non-volatile voters. Opponent's evicted voters go to
+// pendingPlacements; own evictions may be immediately re-placed via replaceOwn.
+export function landGrab(state, { targets, replaceOwn = [] }) {
+  if (state.turn.phase !== "actions") throw new Error("powers only in actions phase");
+  const s = clone(state);
+  const p = s.players[s.turn.current];
+  if ((p.piles.capitalist || 0) < 6) throw new Error("requires Capitalist L6");
+  if (p.usedThisTurn.landGrab) throw new Error("Land Grab already used this turn");
+  if (!Array.isArray(targets) || targets.length === 0 || targets.length > 2)
+    throw new Error("evict 1 or 2 voters");
+
+  const ownEvicted = [];
+  for (const t of targets) {
+    const z = s.zones.find((x) => x.id === t.zoneId);
+    if (!z) throw new Error("no such zone");
+    if (z.volatileSeats.includes(t.seatIndex)) throw new Error("cannot evict volatile voter");
+    const owner = z.seats[t.seatIndex];
+    if (owner == null) throw new Error("no voter to evict");
+    z.seats[t.seatIndex] = null;
+    // If evicted voter was a flipped majority voter, unflip and possibly unlock the zone.
+    if (z.flippedSeats[t.seatIndex]) {
+      z.flippedSeats[t.seatIndex] = false;
+      if (z.lockedBy === owner && voteCount(z, owner) < majorityThreshold(z.id)) {
+        z.flippedSeats = z.flippedSeats.map(() => false);
+        z.lockedBy = null;
+      }
+    }
+    if (owner === p.id) ownEvicted.push({ zoneId: t.zoneId });
+    else s.players[owner].pendingPlacements += 1;
+  }
+
+  if (replaceOwn.length !== ownEvicted.length)
+    throw new Error("replaceOwn count must match own-evicted count");
+  for (const r of replaceOwn) {
+    const z = s.zones.find((x) => x.id === r.zoneId);
+    if (!z) throw new Error("no such zone");
+    if (z.lockedBy !== null || z.coalition !== null) throw new Error("zone closed");
+    if (z.seats[r.seatIndex] != null) throw new Error("seat occupied");
+    z.seats[r.seatIndex] = p.id;
+    if (z.volatileSeats.includes(r.seatIndex))
+      s.turn.pendingHeadlines.push({ zoneId: r.zoneId, playerId: p.id });
+    flipMajorityIfReached(s, z, p.id);
+  }
+
+  p.usedThisTurn.landGrab = true;
+  s.log.push(`${p.name} Land Grab evicted ${targets.length} voter(s)`);
+  return s;
+}
+
 // --- Capitalist L4: Open Market ------------------------------------------------
 // Pay 1 resource, take any 2 in return (once per turn).
 export function openMarket(state, { give, take }) {
