@@ -10,6 +10,7 @@ import {
   betweenTurnsCurtain,
   gameOverScreen
 } from "./screens.js";
+import { hostLobbyScreen, joinLobbyScreen } from "./multiplayerScreens.js";
 import { rulesModal } from "./rulesModal.js";
 
 // ctx = { state, ui, dispatch(action, payload), setUi(patch) }
@@ -23,7 +24,9 @@ export function render(root, ctx) {
 
   const { state, ui } = ctx;
 
-  if (!state || ui.mode === "setup") { root.appendChild(setupScreen(ctx)); }
+  if (ui.mode === "hostLobby") { root.appendChild(hostLobbyScreen(ctx)); }
+  else if (ui.mode === "joinLobby") { root.appendChild(joinLobbyScreen(ctx)); }
+  else if (!state || ui.mode === "setup") { root.appendChild(setupScreen(ctx)); }
   else if (ui.mode === "handoff") { root.appendChild(handoffCurtain(ctx)); }
   else if (state.turn.phase === "draft") { root.appendChild(draftScreen(ctx)); }
   else if (state.turn.phase === "gameover") { root.appendChild(gameOverScreen(ctx)); }

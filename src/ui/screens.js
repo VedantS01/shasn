@@ -160,7 +160,13 @@ export function setupScreen(ctx) {
       color: COLORS[i]
     }));
     ctx.dispatch("newGame", { players, mapId: boardSel.value });
-  } }, "Begin the campaign");
+  } }, "Local pass-and-play game");
+
+  const hostBtn = h("button", { class: "btn btn-lg",
+    onclick: () => ctx.dispatch("goHostLobby") }, "Host LAN game");
+
+  const joinBtn = h("button", { class: "btn btn-lg",
+    onclick: () => ctx.dispatch("goJoinLobby") }, "Join LAN game");
 
   root.appendChild(h("div", { class: "panel stack pop" },
     h("h3", {}, "Who's running?"),
@@ -170,7 +176,10 @@ export function setupScreen(ctx) {
     shuffle,
     h("hr", { class: "rule" }),
     h("p", { class: "muted" }, "Each turn you answer a dilemma for ideology resources, then spend them to place voters across the constituencies. Lock a majority everywhere to end the game — most flipped seats wins."),
-    begin));
+    begin,
+    h("hr", { class: "rule" }),
+    h("p", { class: "muted" }, "LAN multiplayer: each player uses their own browser, connected over the same WiFi. No server needed."),
+    h("div", { class: "row", style: "gap:8px" }, hostBtn, joinBtn)));
 
   return root;
 }
