@@ -1,4 +1,5 @@
 import { renderMap } from "./map.js";
+import { MAPS } from "../data/map.js";
 import { hintBanner } from "./hintBanner.js";
 import { narrateDilemma, narrateChoice, isNarrationEnabled } from "./narration.js";
 import { hasSave } from "./persistence.js";
@@ -7,7 +8,7 @@ import { VOTE_BANK_BY_ID } from "../data/voteBank.js";
 import { CONSPIRACY_BY_ID } from "../data/conspiracies.js";
 import { POWERS, level } from "../engine/powers.js";
 import { IDEOLOGIES, RESOURCES, RESOURCE_OF, tierOf } from "../engine/constants.js";
-import { canPlaceInZone, standings, neighborsOf, voteCount, majorityThreshold,
+import { canPlaceInZone, standings, voteCount, majorityThreshold,
   isZoneFull, soloMajorityZones, emptySeats } from "../engine/rules.js";
 
 const COLORS = ["#b3472f", "#2f6aa8", "#caa12f", "#7a3f9d", "#2f7d54"];
@@ -118,6 +119,12 @@ export function setupScreen(ctx) {
     rows.push(row);
   }
 
+  // Board selector — default small for 2 players, large for 3-4.
+  const boardSel = select(
+    Object.values(MAPS).map((m) => ({ value: m.id, label: m.name })),
+    "small"
+  );
+
   const count = select(
     [2, 3, 4].map((n) => ({ value: String(n), label: `${n} players` })),
     "2"
@@ -125,6 +132,9 @@ export function setupScreen(ctx) {
   count.addEventListener("change", () => {
     const c = Number(count.value);
     rows.forEach((row, i) => { row.style.display = i < c ? "" : "none"; });
+    // Suggest appropriate board based on player count.
+    if (c === 2) boardSel.value = "small";
+    else boardSel.value = "large";
   });
 
   // Shuffle seat order button
@@ -149,16 +159,17 @@ export function setupScreen(ctx) {
       name: row._input.value.trim() || `Player ${i + 1}`,
       color: COLORS[i]
     }));
-    ctx.dispatch("newGame", { players });
+    ctx.dispatch("newGame", { players, mapId: boardSel.value });
   } }, "Begin the campaign");
 
   root.appendChild(h("div", { class: "panel stack pop" },
     h("h3", {}, "Who's running?"),
     h("div", { class: "row" }, h("span", { class: "label" }, "Players"), count),
+    h("div", { class: "row" }, h("span", { class: "label" }, "Board"), boardSel),
     ...rows,
     shuffle,
     h("hr", { class: "rule" }),
-    h("p", { class: "muted" }, "Each turn you answer a dilemma for ideology resources, then spend them to place voters across nine constituencies. Lock a majority everywhere to end the game — most flipped seats wins."),
+    h("p", { class: "muted" }, "Each turn you answer a dilemma for ideology resources, then spend them to place voters across the constituencies. Lock a majority everywhere to end the game — most flipped seats wins."),
     begin));
 
   return root;
@@ -238,7 +249,7 @@ export function turnScreen(ctx) {
     // in the majority zone or its neighbors
     const majZone = state.zones.find((z) => z.id === gerryMode.majorityZoneId);
     if (majZone) {
-      const sourceZoneIds = [gerryMode.majorityZoneId, ...neighborsOf(gerryMode.majorityZoneId)];
+      const sourceZoneIds = [gerryMode.majorityZoneId, ...majZone.neighbors];
       for (const zId of sourceZoneIds) {
         const z = state.zones.find((x) => x.id === zId);
         if (!z) continue;
@@ -252,7 +263,8 @@ export function turnScreen(ctx) {
   } else if (gerryMode && gerryMode.sourceSeat) {
     // Source selected — show dest candidates: adjacent empty seats
     const src = gerryMode.sourceSeat;
-    const adjIds = neighborsOf(src.zoneId);
+    const srcZone = state.zones.find((z) => z.id === src.zoneId);
+    const adjIds = srcZone ? srcZone.neighbors : [];
     for (const adjId of adjIds) {
       const z = state.zones.find((x) => x.id === adjId);
       if (!z || isZoneFull(z)) continue;

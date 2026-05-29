@@ -1,18 +1,21 @@
 import { makeRng, shuffle } from "./rng.js";
-import { ZONES } from "../data/map.js";
+import { MAPS, DEFAULT_MAP } from "../data/map.js";
 import { DILEMMAS } from "../data/dilemmas.js";
 import { CONSPIRACIES } from "../data/conspiracies.js";
 import { HEADLINES } from "../data/headlines.js";
 import { VOTE_BANK } from "../data/voteBank.js";
 
-export function createGame({ players, seed = 1 }) {
+export function createGame({ players, seed = 1, mapId = DEFAULT_MAP }) {
   const rng = makeRng(seed);
+  const mapDef = MAPS[mapId] || MAPS[DEFAULT_MAP];
+  const resolvedMapId = mapDef.id;
   const market = (() => {
     const shuffled = shuffle(VOTE_BANK.map((c) => c.id), rng);
     return { open: shuffled.slice(0, 3), deck: shuffled.slice(3), discard: [] };
   })();
   return {
     seed,
+    mapId: resolvedMapId,
     players: players.map((p, i) => ({
       id: i,
       name: p.name,
@@ -23,8 +26,12 @@ export function createGame({ players, seed = 1 }) {
       pendingPlacements: 0,
       usedThisTurn: {}
     })),
-    zones: ZONES.map((z) => ({
+    zones: mapDef.zones.map((z) => ({
       id: z.id,
+      // Copy zone metadata onto state so rules helpers work map-agnostically.
+      capacity: z.capacity,
+      majority: z.majority,
+      neighbors: [...z.neighbors],
       seats: new Array(z.capacity).fill(null),
       flippedSeats: new Array(z.capacity).fill(false),
       volatileSeats: [...z.volatileSeats],

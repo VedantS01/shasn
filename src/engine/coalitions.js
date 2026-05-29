@@ -17,7 +17,7 @@ export function proposeCoalition(state, { to, zoneId, split, myCardId }) {
   if (!z || z.lockedBy !== null || z.coalition !== null) throw new Error("zone not eligible");
   if (voteCount(z, from) === 0 || voteCount(z, to) === 0)
     throw new Error("both players must have voters in the zone");
-  const need = majorityThreshold(zoneId);
+  const need = majorityThreshold(z);
   const total = (split[from] || 0) + (split[to] || 0);
   if (total < need) throw new Error("split must sum to at least the majority threshold");
   if ((split[from] || 0) > voteCount(z, from)) throw new Error("you don't have that many voters");
@@ -78,7 +78,7 @@ export function withdrawCoalition(state, { zoneId }) {
   }
   const remaining = wz.coalition.partners.find((p) => p !== withdrawer);
   wz.coalition = null;
-  const need = majorityThreshold(zoneId);
+  const need = majorityThreshold(wz);
   if (voteCount(wz, remaining) >= need) {
     let flipped = 0;
     for (let i = 0; i < wz.seats.length; i++) {

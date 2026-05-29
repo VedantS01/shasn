@@ -311,7 +311,7 @@ export function buyVoteBank(state, { openIndex, useBlindFaith = false }) {
 
 function flipMajorityIfReached(s, zone, pid) {
   if (zone.lockedBy !== null || zone.coalition !== null) return;
-  const need = majorityThreshold(zone.id);
+  const need = majorityThreshold(zone);
   if (voteCount(zone, pid) < need) return;
   let flipped = 0;
   for (let i = 0; i < zone.seats.length && flipped < need; i++) {
@@ -370,10 +370,14 @@ export function gerrymander(state, { majorityZoneId, fromZoneId, fromSeatIndex, 
   const maj = s.zones.find((z) => z.id === majorityZoneId);
   if (!maj || maj.lockedBy !== pid) throw new Error("not your solo majority");
   // Source must be in majority zone or a neighbor.
-  const sourcePool = new Set([majorityZoneId, ...neighborsOf(majorityZoneId)]);
+  const sourcePool = new Set([majorityZoneId, ...maj.neighbors]);
   if (!sourcePool.has(fromZoneId)) throw new Error("source not in majority zone or neighbor");
   // Source and destination must share a border with each other.
-  const adj = (a, b) => a === b ? false : neighborsOf(a).includes(b);
+  const adj = (a, b) => {
+    if (a === b) return false;
+    const za = s.zones.find((z) => z.id === a);
+    return za ? za.neighbors.includes(b) : false;
+  };
   if (!adj(fromZoneId, toZoneId)) throw new Error("source/dest do not share a border");
   if (!sourcePool.has(toZoneId)) throw new Error("dest not in majority zone or neighbor");
   const from = s.zones.find((z) => z.id === fromZoneId);
@@ -391,7 +395,7 @@ export function gerrymander(state, { majorityZoneId, fromZoneId, fromSeatIndex, 
   s.turn.gerrymanderMoves[majorityZoneId] = budget - 1;
   // The source zone might lose its majority lock if the moved voter pushed an
   // existing majority holder under threshold (rare, but handle for correctness).
-  if (from.lockedBy !== null && voteCount(from, from.lockedBy) < majorityThreshold(from.id)) {
+  if (from.lockedBy !== null && voteCount(from, from.lockedBy) < majorityThreshold(from)) {
     from.flippedSeats = from.flippedSeats.map(() => false);
     from.lockedBy = null;
   }
@@ -521,15 +525,15 @@ export function usePower(state, { ideology, tier, params = {} }) {
   } else if (key === "supremo:t2") {
     const zone = s.zones.find((z) => z.id === params.zoneId);
     if (!zone || pegCount(zone, p.id) <= 0) throw new Error("need presence in zone");
-    if (pegCount(zone, params.pegOwner) >= majorityThreshold(params.zoneId)) throw new Error("cannot remove a majority peg");
+    if (pegCount(zone, params.pegOwner) >= majorityThreshold(zone)) throw new Error("cannot remove a majority peg");
     const idx = zone.seats.indexOf(params.pegOwner);
     if (idx < 0) throw new Error("no such peg");
     zone.seats[idx] = null;
   } else if (key === "idealist:t3") {
     const zone = s.zones.find((z) => z.id === params.zoneId);
-    const adjacentToPresence = neighborsOf(params.zoneId).some((nId) => pegCount(s.zones.find((z) => z.id === nId), p.id) > 0);
+    const adjacentToPresence = zone.neighbors.some((nId) => pegCount(s.zones.find((z) => z.id === nId), p.id) > 0);
     if (!adjacentToPresence) throw new Error("zone must neighbor your presence");
-    if (pegCount(zone, params.pegOwner) >= majorityThreshold(params.zoneId)) throw new Error("cannot sway a majority peg");
+    if (pegCount(zone, params.pegOwner) >= majorityThreshold(zone)) throw new Error("cannot sway a majority peg");
     const idx = zone.seats.indexOf(params.pegOwner);
     if (idx < 0) throw new Error("no such peg");
     zone.seats[idx] = p.id;
@@ -567,7 +571,7 @@ export function landGrab(state, { targets, replaceOwn = [] }) {
     // If evicted voter was a flipped majority voter, unflip and possibly unlock the zone.
     if (z.flippedSeats[t.seatIndex]) {
       z.flippedSeats[t.seatIndex] = false;
-      if (z.lockedBy === owner && voteCount(z, owner) < majorityThreshold(z.id)) {
+      if (z.lockedBy === owner && voteCount(z, owner) < majorityThreshold(z)) {
         z.flippedSeats = z.flippedSeats.map(() => false);
         z.lockedBy = null;
       }
@@ -622,7 +626,7 @@ export function targetedMarketing(state, { zoneId, opponentId, seatIndices, pay 
     // Note: if a flipped seat is converted, the flip stays — it now counts for the new owner.
   }
   // Opponent might lose their majority if they drop below threshold.
-  if (z.lockedBy === opponentId && voteCount(z, opponentId) < majorityThreshold(z.id)) {
+  if (z.lockedBy === opponentId && voteCount(z, opponentId) < majorityThreshold(z)) {
     z.flippedSeats = z.flippedSeats.map(() => false);
     z.lockedBy = null;
   }
@@ -679,7 +683,7 @@ export function civilDisobedience(state, { targets, pay }) {
     z.seats[t.seatIndex] = null;
     if (z.flippedSeats[t.seatIndex]) {
       z.flippedSeats[t.seatIndex] = false;
-      if (z.lockedBy === owner && voteCount(z, owner) < majorityThreshold(z.id)) {
+      if (z.lockedBy === owner && voteCount(z, owner) < majorityThreshold(z)) {
         z.flippedSeats = z.flippedSeats.map(() => false);
         z.lockedBy = null;
       }

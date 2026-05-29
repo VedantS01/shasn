@@ -58,7 +58,7 @@ function dispatch(action, payload = {}) {
     // --- Special handlers (not pure reducers) ---
 
     if (action === "newGame") {
-      state = createGame({ players: payload.players, seed: Date.now() >>> 0 });
+      state = createGame({ players: payload.players, seed: Date.now() >>> 0, mapId: payload.mapId });
       ui = { mode: "play", error: null, settingsOpen: false, gerryMode: null };
       save(state); paint(); return;
     }

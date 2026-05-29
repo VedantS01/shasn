@@ -26,7 +26,7 @@ export const RESOLVERS = {
     const zone = state.zones.find((z) => z.id === ctx.target.zoneId);
     if (zone.protected && zone.lockedBy !== null) throw new Error("zone is protected");
     const owner = ctx.target.pegOwner;
-    if (pegCount(zone, owner) >= majorityThreshold(zone.id)) throw new Error("cannot remove a majority peg");
+    if (pegCount(zone, owner) >= majorityThreshold(zone)) throw new Error("cannot remove a majority peg");
     const idx = zone.seats.indexOf(owner);
     if (idx < 0) throw new Error("no such peg");
     zone.seats[idx] = null;

@@ -1,5 +1,5 @@
-import { ZONES } from "../data/map.js";
-import { hexPath, hexCenter, seatPositions } from "./geometry.js";
+import { MAPS, DEFAULT_MAP } from "../data/map.js";
+import { hexCenter } from "./geometry.js";
 import { voteCount } from "../engine/rules.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -22,6 +22,11 @@ function tallyByOwner(zoneState) {
   return counts;
 }
 
+// Return the map metadata object for the current state.
+export function getMap(state) {
+  return MAPS[state && state.mapId ? state.mapId : DEFAULT_MAP];
+}
+
 export function renderMap(state, opts = {}) {
   const {
     placeableZoneIds = [],
@@ -32,14 +37,16 @@ export function renderMap(state, opts = {}) {
     onGerryDestClick = () => {}
   } = opts;
 
+  const mapMeta = getMap(state);
+
   const svg = svgEl("svg", {
-    viewBox: "0 0 800 700",
+    viewBox: mapMeta.viewBox || "0 0 800 700",
     class: "map",
     role: "group",
     "aria-label": "Constituency map"
   });
 
-  for (const zDef of ZONES) {
+  for (const zDef of mapMeta.zones) {
     const z = state.zones.find((s) => s.id === zDef.id);
     if (!z) continue;
 
@@ -48,8 +55,8 @@ export function renderMap(state, opts = {}) {
     const lockColor = locked ? state.players[z.lockedBy].color : null;
     const placeable = placeableZoneIds.includes(z.id);
 
-    // Zone polygon
-    const d = hexPath(zDef.axial, HEX_SIZE);
+    // Zone polygon — use pre-computed path from zone data.
+    const d = zDef.path;
     const shape = svgEl("path", {
       d,
       class: `zone-shape${locked ? " locked" : ""}${coalition ? " coalition" : ""}${placeable ? " placeable" : ""}`,
@@ -57,8 +64,12 @@ export function renderMap(state, opts = {}) {
     });
     svg.appendChild(shape);
 
-    // Zone label position: above the hex center
-    const center = hexCenter(zDef.axial);
+    // Zone label position: above the hex center.
+    // hexCenter uses geometry.js which expects the large board constants,
+    // so we compute it from the first/last seat positions instead when
+    // the zone data has seats, falling back to hexCenter for compat.
+    const firstSeat = zDef.seats && zDef.seats.length > 0 ? zDef.seats[0] : null;
+    const center = firstSeat || hexCenter(zDef.axial);
     const labelX = center.x;
     const labelY = center.y - HEX_SIZE * 0.72;
 
@@ -105,8 +116,8 @@ export function renderMap(state, opts = {}) {
       });
     }
 
-    // Seat circles
-    const positions = seatPositions(zDef.axial, HEX_SIZE, zDef.capacity);
+    // Seat circles — use per-seat coords from zone data.
+    const positions = zDef.seats;
     positions.forEach((pt, i) => {
       const owner = z.seats[i];
       const filled = owner != null;

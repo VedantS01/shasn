@@ -1,8 +1,16 @@
 import { ZONE_BY_ID } from "../data/map.js";
 
-export const zoneCapacity = (zoneId) => ZONE_BY_ID[zoneId].capacity;
-export const majorityThreshold = (zoneId) => ZONE_BY_ID[zoneId].majority;
-export const neighborsOf = (zoneId) => ZONE_BY_ID[zoneId].neighbors;
+// zoneCapacity / majorityThreshold / neighborsOf accept either a zone id
+// (string) for backward compat, or a zone state object that carries the
+// metadata directly (which createGame now copies onto every zone).
+function _resolveZone(zoneIdOrObj) {
+  if (typeof zoneIdOrObj === "string") return ZONE_BY_ID[zoneIdOrObj];
+  return zoneIdOrObj;
+}
+
+export const zoneCapacity      = (z) => _resolveZone(z).capacity;
+export const majorityThreshold = (z) => _resolveZone(z).majority;
+export const neighborsOf       = (z) => _resolveZone(z).neighbors;
 
 export const isVolatileSeat = (zone, seatIndex) => zone.volatileSeats.includes(seatIndex);
 
@@ -28,7 +36,8 @@ export const isZoneClosed = (zone) => zone.lockedBy !== null || zone.coalition !
 
 export const majorityHolder = (zone) => {
   if (zone.coalition) return null;   // coalition zones have no single solo holder
-  const need = ZONE_BY_ID[zone.id].majority;
+  // Use zone-object majority if present (new path); fall back to legacy lookup.
+  const need = zone.majority != null ? zone.majority : ZONE_BY_ID[zone.id].majority;
   const counts = {};
   for (const s of zone.seats) if (s !== null) counts[s] = (counts[s] || 0) + 1;
   for (const [pid, n] of Object.entries(counts)) if (n >= need) return Number(pid);
